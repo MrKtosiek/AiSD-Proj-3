@@ -1,5 +1,5 @@
 #include <iostream>
-#include "Board.h"
+#include "Game.h"
 #include "HexPos.h"
 
 #include <crtdbg.h>
@@ -8,7 +8,7 @@ using namespace std;
 
 
 
-void InputGame(Board& board)
+void InputGame(Game& game)
 {
 	size_t size;
 	size_t maxChain;
@@ -16,7 +16,7 @@ void InputGame(Board& board)
 	size_t blackPieces;
 	size_t whiteReserve;
 	size_t blackReserve;
-	char playerToMove;
+	char activePlayer;
 
 	cin >> size;
 	cin >> maxChain;
@@ -24,18 +24,29 @@ void InputGame(Board& board)
 	cin >> blackPieces;
 	cin >> whiteReserve;
 	cin >> blackReserve;
-	cin >> playerToMove;
+	cin >> activePlayer;
 
-	board = Board(size);
+	game = Game(size, activePlayer, whitePieces, blackPieces, whiteReserve, blackReserve);
 
-	board.ReadState();
+	game.ReadState();
 }
 
+Move ReadMove(const Game& game)
+{
+	String fromNotation;
+	String toNotation;
+	std::cin >> fromNotation;
+	std::cin >> toNotation;
+	Move move;
+	move.from = game.NotationToHex(fromNotation);
+	move.to = game.NotationToHex(toNotation);
+	return move;
+}
 
 
 void Program()
 {
-	Board board;
+	Game game;
 
 	String input;
 	while (true)
@@ -49,15 +60,20 @@ void Program()
 		}
 		else if (input == "LOAD_GAME_BOARD")
 		{
-			InputGame(board);
+			InputGame(game);
 		}
 		else if (input == "PRINT_GAME_BOARD")
 		{
-			board.WriteState();
+			game.PrintBoard();
 		}
 		else if (input == "DO_MOVE")
 		{
-			board.DoMove();
+			Move move = ReadMove(game);
+			game.DoMove(move);
+		}
+		else if (input == "PRINT_GAME_STATE")
+		{
+			game.PrintGameState();
 		}
 	}
 

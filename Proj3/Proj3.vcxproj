@@ -142,8 +142,9 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Board.h" />
+    <ClInclude Include="Game.h" />
     <ClInclude Include="HexPos.h" />
+    <ClInclude Include="Move.h" />
     <ClInclude Include="String.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

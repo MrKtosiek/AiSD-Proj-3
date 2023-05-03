@@ -64,6 +64,13 @@ public:
 
 		chars[length - 1] = c;
 	}
+	void Append(const String& str)
+	{
+		for (size_t i = 0; str[i] != 0; i++)
+		{
+			Append(str[i]);
+		}
+	}
 
 	int ToInt() const
 	{
