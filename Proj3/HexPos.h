@@ -42,6 +42,16 @@ struct HexPos
 		return false;
 	}
 
+	size_t GetNeighborIndex(HexPos other) const
+	{
+		for (size_t i = 0; i < 6; i++)
+		{
+			if (GetNeighbor(i) == other)
+				return i;
+		}
+		return 0;
+	}
+
 	HexPos& operator+=(const HexPos& other)
 	{
 		this->x += other.x;

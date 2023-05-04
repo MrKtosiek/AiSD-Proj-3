@@ -1,9 +1,10 @@
 #include <iostream>
+#include <ctime>
 #include "Game.h"
 #include "HexPos.h"
+#include "Solver.h"
 
 #include <crtdbg.h>
-#include "Solver.h"
 
 using namespace std;
 
@@ -27,7 +28,7 @@ void InputGame(Game& game)
 	cin >> blackReserve;
 	cin >> activePlayer;
 
-	game = Game(size, activePlayer, whitePieces, blackPieces, whiteReserve, blackReserve);
+	game = Game(size, activePlayer, whitePieces, blackPieces, whiteReserve, blackReserve, maxChain);
 
 	game.ReadState();
 }
@@ -48,7 +49,7 @@ Move ReadMove(const Game& game)
 void Program()
 {
 	Game game;
-	Solver solver;
+	Solver solver(&game);
 
 	String input;
 	while (true)
@@ -79,7 +80,7 @@ void Program()
 		}
 		else if (input == "GEN_ALL_POS_MOV")
 		{
-			Vector<Move> moves = solver.GenerateLegalMoves(game);
+			Vector<Move> moves = game.GetLegalMoves();
 			for (size_t i = 0; i < moves.GetLength(); i++)
 			{
 				cout << game.HexToNotation(moves[i].from) << " " << game.HexToNotation(moves[i].to) << "\n";
@@ -87,20 +88,30 @@ void Program()
 		}
 		else if (input == "GEN_ALL_POS_MOV_NUM")
 		{
-			Vector<Move> moves = solver.GenerateLegalMoves(game);
+			Vector<Move> moves = game.GetLegalMoves();
 			cout << moves.GetLength() << "\n";
 		}
+		else if (input == "PLAY_RANDOM")
+		{
+			solver.PlayRandomMove();
+		}
 	}
-
 }
 
 int main()
 {
+	//srand(time(nullptr));
+
+	// wait for input
 	while (cin.peek() == EOF) {}
 	int start = clock();
+
 	Program();
+
+	// measure time
 	int end = clock();
 	cout << "Finished after "<< (double)(end - start)/CLOCKS_PER_SEC << "s\n";
+
 	_CrtDumpMemoryLeaks();
 	return 0;
 }
