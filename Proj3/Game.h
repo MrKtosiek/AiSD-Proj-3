@@ -9,7 +9,7 @@
 
 class Game
 {
-private:
+public:
 	char** tiles = nullptr;
 	char activePlayer = TILE_WHITE;
 	int whiteReserve = 0;
@@ -26,7 +26,6 @@ private:
 
 	Move lastMove;
 
-public:
 	int size = 0;
 
 	Game(){}
@@ -42,10 +41,11 @@ public:
 		else
 			activePlayerReserve = &blackReserve;
 
-		tiles = new char* [size * 2 - 1];
-		for (int i = 0; i < size * 2 - 1; i++)
+		int rowCount = GetRowCount();
+		tiles = new char* [rowCount];
+		for (int i = 0; i < rowCount; i++)
 		{
-			tiles[i] = new char[size * 2 - 1]();
+			tiles[i] = new char[rowCount]();
 			for (int j = 0; j < GetRowSize(i); j++)
 				tiles[i][j + GetRowOffset(i)] = orig.tiles[i][j + GetRowOffset(i)];
 		}
@@ -58,10 +58,11 @@ public:
 		else
 			activePlayerReserve = &blackReserve;
 
-		tiles = new char* [size * 2 - 1];
-		for (int i = 0; i < size * 2 - 1; i++)
+		int rowCount = GetRowCount();
+		tiles = new char* [rowCount];
+		for (int i = 0; i < rowCount; i++)
 		{
-			tiles[i] = new char[size * 2 - 1]();
+			tiles[i] = new char[rowCount]();
 			for (int j = 0; j < GetRowSize(i); j++)
 				tiles[i][j + GetRowOffset(i)] = TILE_EMPTY;
 		}
@@ -70,7 +71,7 @@ public:
 	{
 		if (tiles != nullptr)
 		{
-			for (int i = 0; i < size * 2 - 1; i++)
+			for (int i = 0; i < GetRowCount(); i++)
 				delete[] tiles[i];
 			delete[] tiles;
 		}
@@ -84,9 +85,9 @@ public:
 	}
 	int GetRowSize(int row) const
 	{
-		return 2 * size - 1 - abs((int)(row - size + 1));
+		return GetRowCount() - abs((int)(row - size + 1));
 	}
-	int GetRowCount(int row) const
+	int GetRowCount() const
 	{
 		return 2 * size - 1;
 	}
@@ -107,7 +108,7 @@ public:
 
 	void ReadState()
 	{
-		for (int i = 0; i < size * 2 - 1; i++)
+		for (int i = 0; i < GetRowCount(); i++)
 		{
 			for (int j = 0; j < GetRowSize(i); j++)
 				std::cin >> tiles[i][j + GetRowOffset(i)];
@@ -118,7 +119,7 @@ public:
 		std::cout << "White reserve: " << whiteReserve << "\n";
 		std::cout << "Black reserve: " << blackReserve << "\n";
 
-		for (int i = 0; i < size * 2 - 1; i++)
+		for (int i = 0; i < GetRowCount(); i++)
 		{
 			for (int x = 0; x < abs((int)(i - size + 1)); x++)
 				std::cout << ' ';
@@ -190,25 +191,24 @@ public:
 		}
 	}
 
+	//     Notation:                       How it's stored
+	// 
+	//      1 2 3 4 5 6 7 8 9              -1 0 1 2 3 4 5 6 7                            
+	//                                                                 Tile neighbors:   
+	//  a   + + + + +                  -1   + + + + +                                    
+	//  b   + W _ _ B +                 0   + W _ _ B +                4 5               
+	//  c   + _ _ _ _ _ +               1   + _ _ _ _ _ +              3 T 0             
+	//  d   + _ _ _ _ _ _ +             2   + _ _ _ _ _ _ +              2 1             
+	//  e   + B _ _ _ _ _ W +           3   + B _ _ _ _ _ W +                            
+	//  f   + _ _ _ _ _ _ +             4     + _ _ _ _ _ _ +                            
+	//  g   + _ _ _ _ _ +               5       + _ _ _ _ _ +                            
+	//  h   + W _ _ B +                 6         + W _ _ B +                            
+	//  i   + + + + +                   7           + + + + +                            
+	//                                                                                   
+	//      1 2 3 4 5 6 7 8 9              -1 0 1 2 3 4 5 6 7                            
+
 	HexPos NotationToHex(const String& str) const
 	{
-		//     Notation:                       How it's stored
-		// 
-		//      1 2 3 4 5 6 7 8 9              -1 0 1 2 3 4 5 6 7     
-		//                                                            
-		//  a   + + + + +                  -1   + + + + +             
-		//  b   + W _ _ B +                 0   + W _ _ B +           
-		//  c   + _ _ _ _ _ +               1   + _ _ _ _ _ +         
-		//  d   + _ _ _ _ _ _ +             2   + _ _ _ _ _ _ +       
-		//  e   + B _ _ _ _ _ W +           3   + B _ _ _ _ _ W +     
-		//  f   + _ _ _ _ _ _ +             4     + _ _ _ _ _ _ +     
-		//  g   + _ _ _ _ _ +               5       + _ _ _ _ _ +     
-		//  h   + W _ _ B +                 6         + W _ _ B +     
-		//  i   + + + + +                   7           + + + + +     
-		//                                                            
-		//      1 2 3 4 5 6 7 8 9              -1 0 1 2 3 4 5 6 7     
-
-
 		int row = str[0] - 'b';
 		int col = 0;
 
@@ -248,7 +248,7 @@ public:
 	{
 		return
 			(pos.x >= 0 && pos.y >= 0 &&
-			pos.x < size * 2 - 1 && pos.y < size * 2 - 1 &&
+			pos.x < GetRowCount() && pos.y < GetRowCount() &&
 			pos.x - pos.y < size && pos.y - pos.x < size);
 	}
 	bool IsMoveLegal(Move move) const
@@ -256,12 +256,12 @@ public:
 		// initial checks
 		if (IsOnBoard(move.from) || !IsOnBoard(move.to))
 		{
-			std::cout << "incorrect coords\n";
+			//std::cout << "incorrect coords\n";
 			return false;
 		}
 		if (!move.to.IsNeighbor(move.from))
 		{
-			std::cout << "not neighbors\n";
+			//std::cout << "not neighbors\n";
 			return false;
 		}
 
@@ -275,6 +275,7 @@ public:
 
 			cur += dir;
 		}
+		//std::cout << "no space\n";
 		return false;
 	}
 
@@ -282,7 +283,7 @@ public:
 	Game& operator=(const Game& other)
 	{
 		Game tmp(other);
-		size = tmp.size;
+
 		activePlayer = tmp.activePlayer;
 		whiteReserve = tmp.whiteReserve;
 		blackReserve = tmp.blackReserve;
@@ -291,7 +292,11 @@ public:
 			activePlayerReserve = &whiteReserve;
 		else
 			activePlayerReserve = &blackReserve;
-		
+
+		int s = tmp.size;
+		tmp.size = size;
+		size = s;
+
 		char** t = tmp.tiles;
 		tmp.tiles = tiles;
 		tiles = t;

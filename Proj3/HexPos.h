@@ -10,18 +10,29 @@ struct HexPos
 	HexPos() : x(0), y(0) {}
 	HexPos(int x, int y) : x(x), y(y) {}
 
-	HexPos GetNeighbor(size_t i) // i should always be in the range 0-5
+	// returns neighboring tiles based on index i
+	// neighbors are ordered clockwise
+	// 
+	//     -1 0 1 y
+	//
+	// -1   4 5
+	//  0   3 T 0
+	//  1     2 1
+	//  x
+
+	HexPos GetNeighbor(size_t i) const
 	{
-		if (i == 0) return { x - 1, y - 1 };
-		if (i == 1) return { x - 1, y     };
-		if (i == 2) return { x    , y + 1 };
-		if (i == 3) return { x + 1, y + 1 };
-		if (i == 4) return { x + 1, y     };
-		if (i == 5) return { x    , y - 1 };
+		i = (i % 6 + 6) % 6;
+		if (i == 0) return { x    , y + 1 };
+		if (i == 1) return { x + 1, y + 1 };
+		if (i == 2) return { x + 1, y     };
+		if (i == 3) return { x    , y - 1 };
+		if (i == 4) return { x - 1, y - 1 };
+		if (i == 5) return { x - 1, y     };
 		return { INT_MAX, INT_MAX };
 	}
 
-	bool IsNeighbor(HexPos other)
+	bool IsNeighbor(HexPos other) const
 	{
 		for (size_t i = 0; i < 6; i++)
 		{
@@ -53,7 +64,7 @@ struct HexPos
 		l -= r;
 		return l;
 	}
-	HexPos operator-()
+	HexPos operator-() const
 	{
 		return { -x,-y };
 	}
