@@ -80,8 +80,8 @@ public:
 
 	int GetRowOffset(int row) const
 	{
-		if (row >= size)
-			return row - size + 1;
+		if (row < size)
+			return size - row - 1;
 		return 0;
 	}
 	int GetRowSize(int row) const
@@ -91,6 +91,10 @@ public:
 	int GetRowCount() const
 	{
 		return 2 * size - 1;
+	}
+	HexPos GetCenter() const
+	{
+		return { size - 1, size - 1 };
 	}
 
 	void SwitchPlayer()
@@ -135,7 +139,34 @@ public:
 				std::cout << ' ';
 
 			for (int j = 0; j < GetRowSize(i); j++)
-				std::cout << tiles[i][j + GetRowOffset(i)] << ' ';
+			{
+				HexPos center = { size - 1, size - 1 };
+				HexPos pos = { i, j + GetRowOffset(i) };
+				pos -= center;
+				pos = pos.RotateLeft();
+				pos += center;
+				std::cout << tiles[pos.x][pos.y] << ' ';
+			}
+			std::cout << '\n';
+		}
+
+		for (int i = 0; i < GetRowCount(); i++)
+		{
+			for (int x = 0; x < abs((int)(i - size + 1)); x++)
+				std::cout << ' ';
+			if (i >= size - 1)
+				for (int x = 0; x < abs((int)(i - size + 1)); x++)
+					std::cout << ' ';
+
+			for (int j = 0; j < GetRowSize(i); j++)
+			{
+				HexPos center = { size - 1, size - 1 };
+				HexPos pos = { i, j + GetRowOffset(i) };
+				pos -= center;
+				pos = pos.RotateLeft();
+				pos += center;
+				std::cout << HexToNotation(pos) << ' ';
+			}
 			std::cout << '\n';
 		}
 	}
@@ -339,21 +370,24 @@ public:
 	}
 
 
-	//     Notation:                       How it's stored                               
-	//                                                                                   
-	//      1 2 3 4 5 6 7 8 9              -1 0 1 2 3 4 5 6 7                            
-	//                                                                 Tile neighbors:   
-	//  a   + + + + +                  -1   + + + + +                                    
-	//  b   + W _ _ B +                 0   + W _ _ B +                4 5               
-	//  c   + _ _ _ _ _ +               1   + _ _ _ _ _ +              3 T 0             
-	//  d   + _ _ _ _ _ _ +             2   + _ _ _ _ _ _ +              2 1             
-	//  e   + B _ _ _ _ _ W +           3   + B _ _ _ _ _ W +                            
-	//  f   + _ _ _ _ _ _ +             4     + _ _ _ _ _ _ +                            
-	//  g   + _ _ _ _ _ +               5       + _ _ _ _ _ +                            
-	//  h   + W _ _ B +                 6         + W _ _ B +                            
-	//  i   + + + + +                   7           + + + + +                            
-	//                                                                                   
-	//      1 2 3 4 5 6 7 8 9              -1 0 1 2 3 4 5 6 7                            
+	//              How it's stored                                   Notation:               
+	//                                                                                        
+	//              -1 0 1 2 3 4 5 6 7                                   5 6 7 8 9            
+	//                                          Tile neighbors:         4 \ \ \ \ \           
+	//          -1           + + + + +                                 3 \ + + + + + - 9      
+	//           0         + B W W W +            4 5                 2 \ + W _ _ B + - 8     
+	//           1       + _ _ _ _ _ +          3 T 0                1 \ + W _ _ B _ + - 7    
+	//           2     + _ _ _ _ _ _ +          2 1                   \ + W _ _ B _ _ + - 6   
+	//           3   + W W W _ B B B +                                 + B _ _ _ _ _ W + - 5  
+	//           4   + _ _ _ _ _ _ +                                  / + _ _ W _ _ B + - 4   
+	//           5   + _ _ _ _ _ +                                   a / + _ W _ _ B + - 3    
+	//           6   + B B B W +                                      b / + W _ _ B + - 2     
+	//           7   + + + + +                                         c / + + + + + - 1      
+	//                                                                  d / / / / /           
+	//              -1 0 1 2 3 4 5 6 7                                   e f g h i            
+	//                                                                                        
+	//                                                                                        
+
 
 	HexPos NotationToHex(const String& str) const
 	{
@@ -371,8 +405,8 @@ public:
 		}
 
 		col -= 2;
-		if (row >= size)
-			col += row - size + 1;
+		if (row < size)
+			col += size - row - 1;
 
 		return HexPos(row, col);
 	}
@@ -383,8 +417,8 @@ public:
 		str.Append(hex.x + 'b');
 
 		int col = hex.y + 2;
-		if (hex.x >= size)
-			col -= hex.x - size + 1;
+		if (hex.x < size)
+			col -= size - hex.x - 1;
 
 		colStr = col;
 		str.Append(colStr);
@@ -397,10 +431,12 @@ public:
 		return
 			(pos.x >= 0 && pos.y >= 0 &&
 			pos.x < GetRowCount() && pos.y < GetRowCount() &&
-			pos.x - pos.y < size && pos.y - pos.x < size);
+			pos.x + pos.y >= size - 1 && pos.x + pos.y <= (size - 1) * 3);
 	}
 	bool IsMoveLegal(Move move) const
 	{
+		//std::cout << HexToNotation(move.from) << "-" << HexToNotation(move.to) << " ";
+		
 		// initial checks
 		if (IsOnBoard(move.from) || !IsOnBoard(move.to))
 		{
@@ -431,7 +467,7 @@ public:
 	{
 		Vector<Move> moves;
 
-		HexPos cur = { -1,-1 };
+		HexPos cur = { -1, size - 1 };
 		for (int i = 0; i < 6; i++)
 		{
 			for (int n = 0; n < size; n++)

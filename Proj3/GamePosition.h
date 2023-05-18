@@ -21,8 +21,8 @@ struct GamePosition
 		{
 			for (int y = 0; y < game.GetRowSize(x); y++)
 			{
-				board.Append(game.tiles[x][y]);
-				switch (game.tiles[x][y])
+				board.Append(game.tiles[x][y + game.GetRowOffset(x)]);
+				switch (game.tiles[x][y + game.GetRowOffset(x)])
 				{
 				case 'W':
 					whitePieces++;

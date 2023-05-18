@@ -15,21 +15,19 @@ struct HexPos
 	// 
 	//     -1 0 1 y
 	//
-	// -1   4 5
+	// -1     4 5
 	//  0   3 T 0
-	//  1     2 1
+	//  1   2 1
 	//  x
-
 	HexPos GetNeighbor(size_t i) const
 	{
 		i = (i % 6 + 6) % 6;
 		if (i == 0) return { x    , y + 1 };
-		if (i == 1) return { x + 1, y + 1 };
-		if (i == 2) return { x + 1, y     };
+		if (i == 1) return { x + 1, y     };
+		if (i == 2) return { x + 1, y - 1 };
 		if (i == 3) return { x    , y - 1 };
-		if (i == 4) return { x - 1, y - 1 };
-		if (i == 5) return { x - 1, y     };
-		return { INT_MAX, INT_MAX };
+		if (i == 4) return { x - 1, y     };
+		if (i == 5) return { x - 1, y + 1 };
 	}
 
 	bool IsNeighbor(HexPos other) const
@@ -50,6 +48,23 @@ struct HexPos
 				return i;
 		}
 		return 0;
+	}
+
+
+
+	HexPos RotateLeft() const
+	{
+		int q = -x - y;
+		int r = x;
+		int s = y;
+		return { -q, -r };
+	}
+	HexPos RotateRight() const
+	{
+		int q = -x - y;
+		int r = x;
+		int s = y;
+		return { -s, -q };
 	}
 
 	HexPos& operator+=(const HexPos& other)
