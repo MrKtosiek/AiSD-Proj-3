@@ -22,12 +22,15 @@ struct HexPos
 	HexPos GetNeighbor(size_t i) const
 	{
 		i = (i % 6 + 6) % 6;
+
 		if (i == 0) return { x    , y + 1 };
 		if (i == 1) return { x + 1, y     };
 		if (i == 2) return { x + 1, y - 1 };
 		if (i == 3) return { x    , y - 1 };
 		if (i == 4) return { x - 1, y     };
 		if (i == 5) return { x - 1, y + 1 };
+
+		return { INT_MAX, INT_MAX }; // this should never be reached
 	}
 
 	bool IsNeighbor(HexPos other) const

@@ -1,5 +1,7 @@
 #pragma once
 #include "HexPos.h"
+#include "Vector.h"
+#include "Capture.h"
 
 struct Move
 {

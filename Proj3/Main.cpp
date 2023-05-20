@@ -30,19 +30,42 @@ void InputGame(Game& game)
 
 	game = Game(size, activePlayer, whitePieces, blackPieces, whiteReserve, blackReserve, maxChain);
 
-	game.ReadState();
+	game.ReadBoard();
 }
 
-Move ReadMove(const Game& game)
+void ReadMove(Game& game)
 {
-	String fromNotation;
-	String toNotation;
-	std::cin >> fromNotation;
-	std::cin >> toNotation;
-	Move move;
-	move.from = game.NotationToHex(fromNotation);
-	move.to = game.NotationToHex(toNotation);
-	return move;
+	String first;
+	cin >> first;
+
+	if (first == "w:" || first == "b:")
+	{
+		Capture cap;
+		if (first == "w:")
+			cap.player = WHITE;
+		else
+			cap.player = BLACK;
+
+
+		Vector<HexPos> pieces;
+		while (cin.peek() != '\n')
+		{
+			String notation;
+			cin >> notation;
+			pieces.Append(game.NotationToHex(notation));
+		}
+		
+		if(game.NotationToCapture(pieces, cap))
+			game.DoMove(cap);
+	}
+	else
+	{
+		String toNotation;
+		cin >> toNotation;
+		Move move = { game.NotationToHex(first), game.NotationToHex(toNotation) };
+		game.DoMove(move);
+	}
+	
 }
 
 
@@ -71,8 +94,8 @@ void Program()
 		}
 		else if (input == "DO_MOVE")
 		{
-			Move move = ReadMove(game);
-			game.DoMove(move);
+			// DO_MOVE can either be a capture or pushing in a new piece
+			ReadMove(game);
 		}
 		else if (input == "PRINT_GAME_STATE")
 		{

@@ -4,7 +4,10 @@
 #include "Move.h"
 #include "Capture.h"
 #include "Vector.h"
+#include "GamePosition.h"
 
+#define WHITE 0
+#define BLACK 1
 #define TILE_EMPTY '_'
 #define TILE_WHITE 'W'
 #define TILE_BLACK 'B'
@@ -14,11 +17,10 @@ class Game
 public:
 	int size = 0;
 	char** tiles = nullptr;
-	char activePlayer = TILE_WHITE;
-	int whiteReserve = 0;
-	int blackReserve = 0;
-	int* activePlayerReserve = &whiteReserve;
-	int* inactivePlayerReserve = &blackReserve;
+	int activePlayer = 0;
+	char playerColors[2] = { TILE_WHITE, TILE_BLACK };
+	int playerReserves[2] = { 0, 0 };
+	int playerPieces[2] = { 0, 0 };
 	size_t maxChain = 0;
 	enum class GameState
 	{
@@ -30,20 +32,19 @@ public:
 	} gameState = GameState::IN_PROGRESS;
 
 	Move lastMove = {};
-
-	Vector<Capture> possibleCaptures;
+	Move lastBadMove = {};
 
 
 	Game(){}
 	Game(const Game& orig)
 	{
 		size = orig.size;
-		activePlayer = orig.activePlayer;
-		whiteReserve = orig.whiteReserve;
-		blackReserve = orig.blackReserve;
 		maxChain = orig.maxChain;
-
-		SetPlayerReserves();
+		activePlayer = orig.activePlayer;
+		playerReserves[WHITE] = orig.playerReserves[WHITE];
+		playerReserves[BLACK] = orig.playerReserves[BLACK];
+		playerPieces[WHITE] = orig.playerPieces[WHITE];
+		playerPieces[BLACK] = orig.playerPieces[BLACK];
 
 		int rowCount = GetRowCount();
 		tiles = new char* [rowCount];
@@ -55,9 +56,17 @@ public:
 		}
 	}
 	Game(int size, char activePlayer, int whitePieces, int blackPieces, int whiteReserve, int blackReserve, size_t maxChain)
-		: size(size), activePlayer(activePlayer), whiteReserve(whiteReserve), blackReserve(blackReserve), maxChain(maxChain)
+		: size(size), maxChain(maxChain)
 	{
-		SetPlayerReserves();
+		if (activePlayer == TILE_WHITE)
+			this->activePlayer = WHITE;
+		else
+			this->activePlayer = BLACK;
+
+		playerReserves[WHITE] = whiteReserve;
+		playerReserves[BLACK] = blackReserve;
+		playerPieces[WHITE] = whitePieces;
+		playerPieces[BLACK] = blackPieces;
 
 		int rowCount = GetRowCount();
 		tiles = new char* [rowCount];
@@ -99,39 +108,37 @@ public:
 
 	void SwitchPlayer()
 	{
-		if (activePlayer == TILE_WHITE)
-			activePlayer = TILE_BLACK;
-		else
-			activePlayer = TILE_WHITE;
-
-		SetPlayerReserves();
+		activePlayer = InactivePlayer();
 	}
-	void SetPlayerReserves()
+	int InactivePlayer()
 	{
-		if (activePlayer == TILE_WHITE)
-		{
-			activePlayerReserve = &whiteReserve;
-			inactivePlayerReserve = &blackReserve;
-		}
-		else
-		{
-			activePlayerReserve = &blackReserve;
-			inactivePlayerReserve = &whiteReserve;
-		}
+		return (activePlayer + 1) % 2;
 	}
 
-	void ReadState()
+	void ReadBoard()
 	{
 		for (int i = 0; i < GetRowCount(); i++)
 		{
 			for (int j = 0; j < GetRowSize(i); j++)
-				std::cin >> tiles[i][j + GetRowOffset(i)];
+			{
+				HexPos center = { size - 1, size - 1 };
+				HexPos pos = { i, j + GetRowOffset(i) };
+				pos -= center;
+				pos = pos.RotateLeft();
+				pos += center;
+				std::cin >> tiles[pos.x][pos.y];
+			}
 		}
 	}
 	void PrintBoard()
 	{
-		std::cout << "White reserve: " << whiteReserve << "\n";
-		std::cout << "Black reserve: " << blackReserve << "\n";
+		std::cout << size << " ";
+		std::cout << maxChain << " ";
+		std::cout << playerPieces[WHITE] << " ";
+		std::cout << playerPieces[BLACK] << "\n";
+		std::cout << playerReserves[WHITE] << " ";
+		std::cout << playerReserves[BLACK] << " ";
+		std::cout << playerColors[activePlayer] << "\n";
 
 		for (int i = 0; i < GetRowCount(); i++)
 		{
@@ -149,47 +156,105 @@ public:
 			}
 			std::cout << '\n';
 		}
-
-		for (int i = 0; i < GetRowCount(); i++)
-		{
-			for (int x = 0; x < abs((int)(i - size + 1)); x++)
-				std::cout << ' ';
-			if (i >= size - 1)
-				for (int x = 0; x < abs((int)(i - size + 1)); x++)
-					std::cout << ' ';
-
-			for (int j = 0; j < GetRowSize(i); j++)
-			{
-				HexPos center = { size - 1, size - 1 };
-				HexPos pos = { i, j + GetRowOffset(i) };
-				pos -= center;
-				pos = pos.RotateLeft();
-				pos += center;
-				std::cout << HexToNotation(pos) << ' ';
-			}
-			std::cout << '\n';
-		}
 	}
 
-	void DoMove(const Move move)
+	void DoMove(const Move& move)
 	{
 		if (gameState == GameState::WHITE_WIN || gameState == GameState::BLACK_WIN || gameState == GameState::DEAD_LOCK)
 		{
-			// the game is finished
+			// the game has finished
 			return;
 		}
 
-		lastMove = move;
+
+		// check if the move is legal and if there are no unsettled captures
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(lastMove, activePlayer);
 		if (!IsMoveLegal(move))
 		{
+			std::cout << "Illegal move\n";
+			lastBadMove = move;
+			gameState = GameState::BAD_MOVE;
+			return;
+		}
+		if (possibleCaptures.GetLength() > 1)
+		{
+			std::cout << "Can't move, there are captures that need to be resolved\n";
+			lastBadMove = move;
 			gameState = GameState::BAD_MOVE;
 			return;
 		}
 
+
+		// check game ending conditions
+		if (playerReserves[activePlayer] <= 0)
+		{
+			if (activePlayer == WHITE)
+				gameState = GameState::BLACK_WIN;
+			else
+				gameState = GameState::WHITE_WIN;
+
+			return;
+		}
+		if (GetLegalMoves().GetLength() == 0)
+		{
+			gameState = GameState::DEAD_LOCK;
+			return;
+		}
+
 		// move the pieces
+		Push(move);
+
+		ResolveCaptures(move, activePlayer);
+
+		lastMove = move;
+		gameState = GameState::IN_PROGRESS;
+	}
+	void DoMove(const Capture& capture)
+	{
+		// verify the capture notation
+		if (capture.player != activePlayer)
+		{
+			std::cout << "wrong player color\n";
+			gameState = GameState::BAD_MOVE;
+			return;
+		}
+		if (!CheckCapture(capture))
+		{
+			std::cout << "incorrect capture\n";
+			gameState = GameState::BAD_MOVE;
+			return;
+		}
+
+		CapturePieces(capture);
+
+		ResolveCaptures(lastMove, activePlayer);
+	}
+
+	// automatically perform all captures that don't need any decisions, and switch the player
+	void ResolveCaptures(const Move& lastMove, int player)
+	{
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(lastMove, activePlayer);
+		if (possibleCaptures.GetLength() == 1)
+		{
+			CapturePieces(possibleCaptures[0]);
+		}
+		if (possibleCaptures.GetLength() <= 1)
+		{
+			SwitchPlayer();
+
+			possibleCaptures = GetPossibleCaptures(lastMove, activePlayer);
+			if (possibleCaptures.GetLength() == 1)
+			{
+				CapturePieces(possibleCaptures[0]);
+			}
+		}
+	}
+
+	void Push(const Move& move)
+	{
 		HexPos cur = move.to;
 		HexPos dir = move.to - move.from;
-		char valToMove = activePlayer;
+		char valToMove = playerColors[activePlayer];
 		while (tiles[cur.x][cur.y] != TILE_EMPTY)
 		{
 			char tmp = tiles[cur.x][cur.y];
@@ -200,111 +265,89 @@ public:
 		}
 		tiles[cur.x][cur.y] = valToMove;
 
-		
-		(*activePlayerReserve)--;
-
-		CheckPossibleCaptures(move);
-		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
-		{
-			std::cout << "Before capture " << i << "\n";
-			PrintBoard();
-			CapturePieces(possibleCaptures[i]);
-			std::cout << "After capture " << i << "\n";
-			PrintBoard();
-		}
-
-		SwitchPlayer();
-
-
-		// check winning conditions
-		if (*activePlayerReserve <= 0)
-		{
-			if (activePlayer == TILE_WHITE)
-				gameState = GameState::BLACK_WIN;
-			else
-				gameState = GameState::WHITE_WIN;
-
-			return;
-		}
-
-		if (GetLegalMoves().GetLength() == 0)
-		{
-			gameState = GameState::DEAD_LOCK;
-			return;
-		}
-
-
-		gameState = GameState::IN_PROGRESS;
+		playerReserves[activePlayer] -= 1;
 	}
 
-	void CheckPossibleCaptures(Move move)
+	Vector<Capture> GetPossibleCaptures(Move move, int player)
 	{
-		possibleCaptures = Vector<Capture>();
+		Vector<Capture> possibleCaptures;
 
 		// check crossing captures
 		HexPos cur = move.to;
 		size_t dir = move.from.GetNeighborIndex(move.to);
-		while (IsOnBoard(cur) && tiles[cur.x][cur.y] != TILE_EMPTY)
+		while (IsOnBoard(cur)/* && tiles[cur.x][cur.y] != TILE_EMPTY*/)
 		{
-			Capture cap = { cur, cur.GetNeighbor(dir + 1) - cur, tiles[cur.x][cur.y] };
-			
-			if (CheckCapture(cap))
-				possibleCaptures.Append(cap);
+			if (tiles[cur.x][cur.y] == playerColors[player])
+			{
+				Capture cap = { cur, cur.GetNeighbor(dir + 1) - cur, CharToPlayer(tiles[cur.x][cur.y]) };
 
-			cap.dir = cur.GetNeighbor(dir + 2) - cur;
-			
-			if (CheckCapture(cap))
-				possibleCaptures.Append(cap);
+				if (CheckCapture(cap))
+					possibleCaptures.Append(cap);
+
+				cap.dir = cur.GetNeighbor(dir + 2) - cur;
+
+				if (CheckCapture(cap))
+					possibleCaptures.Append(cap);
+			}
 
 			cur = cur.GetNeighbor(dir);
 		}
 
 		// check parallel captures
 		cur = move.to;
-		while (IsOnBoard(cur) && tiles[cur.x][cur.y] != TILE_EMPTY)
+		while (IsOnBoard(cur)/* && tiles[cur.x][cur.y] != TILE_EMPTY*/)
 		{
-			Capture cap = { cur, cur.GetNeighbor(dir) - cur, tiles[cur.x][cur.y] };
-
-			if (CheckCapture(cap))
-				possibleCaptures.Append(cap);
-
-			// skip the captured chain
-			while (IsOnBoard(cur) && tiles[cur.x][cur.y] == cap.color)
+			if (tiles[cur.x][cur.y] == playerColors[player])
 			{
-				cur = cur.GetNeighbor(dir);
+				Capture cap = { cur, cur.GetNeighbor(dir) - cur, CharToPlayer(tiles[cur.x][cur.y]) };
+
+				if (CheckCapture(cap))
+					possibleCaptures.Append(cap);
+
+				// skip the captured chain
+				while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[cap.player])
+				{
+					cur = cur.GetNeighbor(dir);
+				}
 			}
+			cur = cur.GetNeighbor(dir);
 		}
 
-		OrderPossibleCaptures();
+		//OrderCaptures(possibleCaptures);
+
+		return possibleCaptures;
 	}
-	void OrderPossibleCaptures()
+	void OrderCaptures(Vector<Capture>& captures)
 	{
-		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
+		// bubble sort the captures based on their color compared to the active player
+		// (active player's captures are executed first)
+		for (size_t i = 0; i < captures.GetLength(); i++)
 		{
 			for (size_t j = 0; j < i; j++)
 			{
-				if (possibleCaptures[j].color != activePlayer && possibleCaptures[j + 1].color == activePlayer)
+				if (captures[j].player != activePlayer && captures[j + 1].player == activePlayer)
 				{
-					Capture tmp = possibleCaptures[j];
-					possibleCaptures[j] = possibleCaptures[j + 1];
-					possibleCaptures[j + 1] = tmp;
+					std::swap(captures[j], captures[j + 1]);
 				}
 			}
 		}
 	}
 
-	bool CheckCapture(Capture cap)
+	bool CheckCapture(const Capture& cap)
 	{
-		int row = 1;
+		size_t row = 1;
+
+		if (tiles[cap.pos.x][cap.pos.y] != playerColors[cap.player])
+			return false;
 
 		HexPos cur = cap.pos + cap.dir;
-		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == cap.color)
+		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[cap.player])
 		{
 			row++;
 			cur += cap.dir;
 		}
 		cur = cap.pos - cap.dir;
-		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == cap.color)
+		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[cap.player])
 		{
 			row++;
 			cur -= cap.dir;
@@ -313,37 +356,64 @@ public:
 		return (row >= maxChain);
 	}
 
-	void CapturePieces(Capture cap)
+	void CapturePieces(const Capture& cap)
 	{
 		HexPos cur = cap.pos;
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] != TILE_EMPTY)
 		{
-			if (tiles[cur.x][cur.y] == cap.color)
-			{
-				if (cap.color == activePlayer)
-					*activePlayerReserve += 1;
-				else
-					*inactivePlayerReserve += 1;
-			}
-
-			tiles[cur.x][cur.y] = TILE_EMPTY;
+			CapturePiece(cur, cap.player);
 			cur += cap.dir;
 		}
 		cur = cap.pos - cap.dir;
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] != TILE_EMPTY)
 		{
-			if (tiles[cur.x][cur.y] == cap.color)
-			{
-				if (cap.color == activePlayer)
-					*activePlayerReserve += 1;
-				else
-					*inactivePlayerReserve += 1;
-			}
-
-			tiles[cur.x][cur.y] = TILE_EMPTY;
+			CapturePiece(cur, cap.player);
 			cur -= cap.dir;
 		}
 	}
+	void CapturePiece(HexPos pos, int capturer)
+	{
+		if (tiles[pos.x][pos.y] == playerColors[capturer])
+		{
+			if (capturer == activePlayer)
+				playerReserves[activePlayer] += 1;
+			else
+				playerReserves[InactivePlayer()] += 1;
+		}
+
+		playerPieces[CharToPlayer(tiles[pos.x][pos.y])] -= 1;
+		tiles[pos.x][pos.y] = TILE_EMPTY;
+	}
+
+	bool NotationToCapture(const Vector<HexPos>& pieces, Capture& capture)
+	{
+		if (pieces.GetLength() < maxChain) // the chain is too short
+		{
+			return false;
+		}
+
+		if (!pieces[0].IsNeighbor(pieces[1]))
+		{
+			return false;
+		}
+
+		HexPos cur = pieces[0];
+		HexPos dir = pieces[1] - pieces[0];
+		for (size_t i = 0; i < pieces.GetLength(); i++)
+		{
+			if (!(pieces[i] == cur))
+			{
+				return false;
+			}
+
+			cur += dir;
+		}
+
+		capture.pos = pieces[0];
+		capture.dir = dir;
+		return true;
+	}
+
 
 	void PrintGameState()
 	{
@@ -353,7 +423,8 @@ public:
 			std::cout << "in_progress\n";
 			break;
 		case GameState::BAD_MOVE:
-			std::cout << "bad_move " << activePlayer << ' ' << HexToNotation(lastMove.from) << ' ' << HexToNotation(lastMove.to) << "\n";
+			std::cout << "bad_move " << playerColors[activePlayer];
+			std::cout << ' ' << HexToNotation(lastBadMove.from) << ' ' << HexToNotation(lastBadMove.to) << "\n";
 			break;
 		case GameState::WHITE_WIN:
 			std::cout << "white_win\n";
@@ -362,7 +433,7 @@ public:
 			std::cout << "black_win\n";
 			break;
 		case GameState::DEAD_LOCK:
-			std::cout << "dead_lock " << activePlayer << "\n";
+			std::cout << "dead_lock " << playerColors[activePlayer] << "\n";
 			break;
 		default:
 			break;
@@ -424,6 +495,51 @@ public:
 		str.Append(colStr);
 
 		return str;
+	}
+
+	int CharToPlayer(char c)
+	{
+		return (c == TILE_WHITE) ? WHITE : BLACK;
+	}
+
+	GamePosition GetGamePosition()
+	{
+		GamePosition gamePos;
+		gamePos.activePlayer = activePlayer;
+		gamePos.whiteReserve = playerReserves[WHITE];
+		gamePos.blackReserve = playerReserves[BLACK];
+		gamePos.whitePieces = playerPieces[WHITE];
+		gamePos.blackPieces = playerPieces[BLACK];
+		gamePos.gameState = (int)gameState;
+
+		for (int x = 0; x < GetRowCount(); x++)
+		{
+			for (int y = 0; y < GetRowSize(x); y++)
+			{
+				gamePos.board.Append(tiles[x][y + GetRowOffset(x)]);
+			}
+		}
+
+		return gamePos;
+	}
+	void RestorePosition(const GamePosition& gamePos)
+	{
+		activePlayer = gamePos.activePlayer;
+		playerReserves[WHITE] = gamePos.whiteReserve;
+		playerReserves[BLACK] = gamePos.blackReserve;
+		playerPieces[WHITE] = gamePos.whitePieces;
+		playerPieces[BLACK] = gamePos.blackPieces;
+		gameState = (GameState)gamePos.gameState;
+
+		int c = 0;
+		for (int i = 0; i < GetRowCount(); i++)
+		{
+			for (int j = 0; j < GetRowSize(i); j++)
+			{
+				tiles[i][j + GetRowOffset(i)] = gamePos.board[c];
+				c++;
+			}
+		}
 	}
 
 	bool IsOnBoard(HexPos pos) const
@@ -494,21 +610,13 @@ public:
 	{
 		Game tmp(other);
 
-		activePlayer = tmp.activePlayer;
-		whiteReserve = tmp.whiteReserve;
-		blackReserve = tmp.blackReserve;
-		maxChain = tmp.maxChain;
+		std::swap(activePlayer, tmp.activePlayer);
+		std::swap(playerReserves, tmp.playerReserves);
+		std::swap(playerPieces, tmp.playerPieces);
+		std::swap(maxChain, tmp.maxChain);
+		std::swap(size, tmp.size);
+		std::swap(tiles, tmp.tiles);
 
-		SetPlayerReserves();
-
-		int s = tmp.size;
-		tmp.size = size;
-		size = s;
-
-		char** t = tmp.tiles;
-		tmp.tiles = tiles;
-		tiles = t;
 		return *this;
 	}
 };
-
