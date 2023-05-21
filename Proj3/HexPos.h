@@ -59,13 +59,13 @@ struct HexPos
 	{
 		int q = -x - y;
 		int r = x;
-		int s = y;
+		//int s = y;
 		return { -q, -r };
 	}
 	HexPos RotateRight() const
 	{
 		int q = -x - y;
-		int r = x;
+		//int r = x;
 		int s = y;
 		return { -s, -q };
 	}

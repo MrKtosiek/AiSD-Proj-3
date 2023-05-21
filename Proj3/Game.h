@@ -6,21 +6,24 @@
 #include "Vector.h"
 #include "GamePosition.h"
 
-#define WHITE 0
-#define BLACK 1
-#define TILE_EMPTY '_'
-#define TILE_WHITE 'W'
-#define TILE_BLACK 'B'
 
 class Game
 {
 public:
+
+	const int WHITE = 0;
+	const int BLACK = 1;
+	const char TILE_EMPTY = '_';
+	const char TILE_WHITE = 'W';
+	const char TILE_BLACK = 'B';
+
 	int size = 0;
 	char** tiles = nullptr;
 	int activePlayer = 0;
 	char playerColors[2] = { TILE_WHITE, TILE_BLACK };
 	int playerReserves[2] = { 0, 0 };
 	int playerPieces[2] = { 0, 0 };
+	int playerMaxPieces[2] = { 0, 0 };
 	size_t maxChain = 0;
 	enum class GameState
 	{
@@ -45,6 +48,8 @@ public:
 		playerReserves[BLACK] = orig.playerReserves[BLACK];
 		playerPieces[WHITE] = orig.playerPieces[WHITE];
 		playerPieces[BLACK] = orig.playerPieces[BLACK];
+		playerMaxPieces[WHITE] = orig.playerMaxPieces[WHITE];
+		playerMaxPieces[BLACK] = orig.playerMaxPieces[BLACK];
 
 		int rowCount = GetRowCount();
 		tiles = new char* [rowCount];
@@ -55,7 +60,7 @@ public:
 				tiles[i][j + GetRowOffset(i)] = orig.tiles[i][j + GetRowOffset(i)];
 		}
 	}
-	Game(int size, char activePlayer, int whitePieces, int blackPieces, int whiteReserve, int blackReserve, size_t maxChain)
+	Game(int size, char activePlayer, int whiteMaxPieces, int blackMaxPieces, int whiteReserve, int blackReserve, size_t maxChain)
 		: size(size), maxChain(maxChain)
 	{
 		if (activePlayer == TILE_WHITE)
@@ -65,8 +70,8 @@ public:
 
 		playerReserves[WHITE] = whiteReserve;
 		playerReserves[BLACK] = blackReserve;
-		playerPieces[WHITE] = whitePieces;
-		playerPieces[BLACK] = blackPieces;
+		playerMaxPieces[WHITE] = whiteMaxPieces;
+		playerMaxPieces[BLACK] = blackMaxPieces;
 
 		int rowCount = GetRowCount();
 		tiles = new char* [rowCount];
@@ -110,13 +115,59 @@ public:
 	{
 		activePlayer = InactivePlayer();
 	}
-	int InactivePlayer()
+	int InactivePlayer() const
 	{
 		return (activePlayer + 1) % 2;
 	}
 
 	void ReadBoard()
 	{
+		std::cin >> std::ws;
+		String board;
+		size_t correctBoardLength = 0;
+
+		for (int i = 0; i < GetRowCount(); i++)
+		{
+			correctBoardLength += GetRowSize(i);
+
+			char* line = new char[256];
+			std::cin.getline(line, 256);
+
+			for (size_t l = 0; l < strlen(line); l++)
+			{
+				char c = line[l];
+				if (c == TILE_EMPTY || c == TILE_WHITE || c == TILE_BLACK)
+				{
+					board.Append(c);
+					if (c == TILE_WHITE)
+						playerPieces[WHITE] += 1;
+					if (c == TILE_BLACK)
+						playerPieces[BLACK] += 1;
+				}
+			}
+
+			delete[] line;
+		}
+
+
+		if (board.GetLength() != correctBoardLength)
+		{
+			std::cout << "WRONG_BOARD_ROW_LENGTH\n";
+			return;
+		}
+		if (playerMaxPieces[WHITE] - playerPieces[WHITE] != playerReserves[WHITE])
+		{
+			std::cout << "WRONG_WHITE_PAWNS_NUMBER\n";
+			return;
+		}
+		if (playerMaxPieces[BLACK] - playerPieces[BLACK] != playerReserves[BLACK])
+		{
+			std::cout << "WRONG_BLACK_PAWNS_NUMBER\n";
+			return;
+		}
+
+
+		int cursor = 0;
 		for (int i = 0; i < GetRowCount(); i++)
 		{
 			for (int j = 0; j < GetRowSize(i); j++)
@@ -126,11 +177,15 @@ public:
 				pos -= center;
 				pos = pos.RotateLeft();
 				pos += center;
-				std::cin >> tiles[pos.x][pos.y];
+				tiles[pos.x][pos.y] = board[cursor];
 			}
 		}
+
+
+		std::cout << "BOARD_STATE_OK\n";
+		return;
 	}
-	void PrintBoard()
+	void PrintBoard() const
 	{
 		std::cout << size << " ";
 		std::cout << maxChain << " ";
@@ -231,9 +286,9 @@ public:
 	}
 
 	// automatically perform all captures that don't need any decisions, and switch the player
-	void ResolveCaptures(const Move& lastMove, int player)
+	void ResolveCaptures(const Move& previousMove, int player)
 	{
-		Vector<Capture> possibleCaptures = GetPossibleCaptures(lastMove, activePlayer);
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(previousMove, player);
 		if (possibleCaptures.GetLength() == 1)
 		{
 			CapturePieces(possibleCaptures[0]);
@@ -242,7 +297,7 @@ public:
 		{
 			SwitchPlayer();
 
-			possibleCaptures = GetPossibleCaptures(lastMove, activePlayer);
+			possibleCaptures = GetPossibleCaptures(previousMove, player);
 			if (possibleCaptures.GetLength() == 1)
 			{
 				CapturePieces(possibleCaptures[0]);
@@ -268,7 +323,7 @@ public:
 		playerReserves[activePlayer] -= 1;
 	}
 
-	Vector<Capture> GetPossibleCaptures(Move move, int player)
+	Vector<Capture> GetPossibleCaptures(Move move, int player) const
 	{
 		Vector<Capture> possibleCaptures;
 
@@ -317,7 +372,7 @@ public:
 
 		return possibleCaptures;
 	}
-	void OrderCaptures(Vector<Capture>& captures)
+	void OrderCaptures(Vector<Capture>& captures) const
 	{
 		// bubble sort the captures based on their color compared to the active player
 		// (active player's captures are executed first)
@@ -333,7 +388,7 @@ public:
 		}
 	}
 
-	bool CheckCapture(const Capture& cap)
+	bool CheckCapture(const Capture& cap) const
 	{
 		size_t row = 1;
 
@@ -385,7 +440,7 @@ public:
 		tiles[pos.x][pos.y] = TILE_EMPTY;
 	}
 
-	bool NotationToCapture(const Vector<HexPos>& pieces, Capture& capture)
+	bool NotationToCapture(const Vector<HexPos>& pieces, Capture& capture) const
 	{
 		if (pieces.GetLength() < maxChain) // the chain is too short
 		{
@@ -415,7 +470,7 @@ public:
 	}
 
 
-	void PrintGameState()
+	void PrintGameState() const
 	{
 		switch (gameState)
 		{
@@ -497,7 +552,7 @@ public:
 		return str;
 	}
 
-	int CharToPlayer(char c)
+	int CharToPlayer(char c) const
 	{
 		return (c == TILE_WHITE) ? WHITE : BLACK;
 	}
@@ -579,7 +634,7 @@ public:
 		return false;
 	}
 
-	Vector<Move> GetLegalMoves()
+	Vector<Move> GetLegalMoves() const
 	{
 		Vector<Move> moves;
 
@@ -613,6 +668,7 @@ public:
 		std::swap(activePlayer, tmp.activePlayer);
 		std::swap(playerReserves, tmp.playerReserves);
 		std::swap(playerPieces, tmp.playerPieces);
+		std::swap(playerMaxPieces, tmp.playerMaxPieces);
 		std::swap(maxChain, tmp.maxChain);
 		std::swap(size, tmp.size);
 		std::swap(tiles, tmp.tiles);

@@ -18,7 +18,7 @@ struct GamePosition
 		return (whitePieces * 2 + whiteReserve) - (blackPieces * 2 + blackReserve);
 	}
 
-	bool operator==(const GamePosition& other)
+	bool operator==(const GamePosition& other) const
 	{
 		return
 			whitePieces == other.whitePieces &&

@@ -14,21 +14,21 @@ void InputGame(Game& game)
 {
 	size_t size;
 	size_t maxChain;
-	size_t whitePieces;
-	size_t blackPieces;
+	size_t whiteMaxPieces;
+	size_t blackMaxPieces;
 	size_t whiteReserve;
 	size_t blackReserve;
 	char activePlayer;
 
 	cin >> size;
 	cin >> maxChain;
-	cin >> whitePieces;
-	cin >> blackPieces;
+	cin >> whiteMaxPieces;
+	cin >> blackMaxPieces;
 	cin >> whiteReserve;
 	cin >> blackReserve;
 	cin >> activePlayer;
 
-	game = Game(size, activePlayer, whitePieces, blackPieces, whiteReserve, blackReserve, maxChain);
+	game = Game(size, activePlayer, whiteMaxPieces, blackMaxPieces, whiteReserve, blackReserve, maxChain);
 
 	game.ReadBoard();
 }
@@ -42,9 +42,9 @@ void ReadMove(Game& game)
 	{
 		Capture cap;
 		if (first == "w:")
-			cap.player = WHITE;
+			cap.player = game.WHITE;
 		else
-			cap.player = BLACK;
+			cap.player = game.BLACK;
 
 
 		Vector<HexPos> pieces;
@@ -75,7 +75,7 @@ void Program()
 	Solver solver(&game);
 
 	String input;
-	while (true)
+	while (!cin.eof())
 	{
 		cin >> input;
 		input.Capitalize();
@@ -126,15 +126,15 @@ int main()
 	//srand(time(nullptr));
 
 	// wait for input
-	while (cin.peek() == EOF) {}
-	int start = clock();
+	//while (cin.peek() == EOF) {}
+	//int start = clock();
 
 	Program();
 
 	// measure time
-	int end = clock();
-	cout << "Finished after "<< (double)(end - start)/CLOCKS_PER_SEC << "s\n";
+	//int end = clock();
+	//cout << "Finished after "<< (double)(end - start)/CLOCKS_PER_SEC << "s\n";
 
-	_CrtDumpMemoryLeaks();
+	//_CrtDumpMemoryLeaks();
 	return 0;
 }
