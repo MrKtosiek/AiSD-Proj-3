@@ -5,6 +5,7 @@
 #include "Capture.h"
 #include "Vector.h"
 #include "GamePosition.h"
+#include "GamePositionSet.h"
 
 
 class Game
@@ -178,6 +179,7 @@ public:
 				pos = pos.RotateLeft();
 				pos += center;
 				tiles[pos.x][pos.y] = board[cursor];
+				cursor++;
 			}
 		}
 
@@ -259,7 +261,7 @@ public:
 		// move the pieces
 		Push(move);
 
-		ResolveCaptures(move, activePlayer);
+		ResolveCaptures(move);
 
 		lastMove = move;
 		gameState = GameState::IN_PROGRESS;
@@ -282,13 +284,13 @@ public:
 
 		CapturePieces(capture);
 
-		ResolveCaptures(lastMove, activePlayer);
+		ResolveCaptures(lastMove);
 	}
 
 	// automatically perform all captures that don't need any decisions, and switch the player
-	void ResolveCaptures(const Move& previousMove, int player)
+	void ResolveCaptures(const Move& previousMove)
 	{
-		Vector<Capture> possibleCaptures = GetPossibleCaptures(previousMove, player);
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(previousMove, activePlayer);
 		if (possibleCaptures.GetLength() == 1)
 		{
 			CapturePieces(possibleCaptures[0]);
@@ -297,7 +299,7 @@ public:
 		{
 			SwitchPlayer();
 
-			possibleCaptures = GetPossibleCaptures(previousMove, player);
+			possibleCaptures = GetPossibleCaptures(previousMove, activePlayer);
 			if (possibleCaptures.GetLength() == 1)
 			{
 				CapturePieces(possibleCaptures[0]);
@@ -557,7 +559,7 @@ public:
 		return (c == TILE_WHITE) ? WHITE : BLACK;
 	}
 
-	GamePosition GetGamePosition()
+	GamePosition GetGamePosition() const
 	{
 		GamePosition gamePos;
 		gamePos.activePlayer = activePlayer;
@@ -566,6 +568,7 @@ public:
 		gamePos.whitePieces = playerPieces[WHITE];
 		gamePos.blackPieces = playerPieces[BLACK];
 		gamePos.gameState = (int)gameState;
+		gamePos.lastMove = lastMove;
 
 		for (int x = 0; x < GetRowCount(); x++)
 		{
@@ -585,6 +588,7 @@ public:
 		playerPieces[WHITE] = gamePos.whitePieces;
 		playerPieces[BLACK] = gamePos.blackPieces;
 		gameState = (GameState)gamePos.gameState;
+		lastMove = gamePos.lastMove;
 
 		int c = 0;
 		for (int i = 0; i < GetRowCount(); i++)
@@ -634,9 +638,11 @@ public:
 		return false;
 	}
 
-	Vector<Move> GetLegalMoves() const
+	Vector<Move> GetLegalMoves()
 	{
 		Vector<Move> moves;
+		GamePositionSet states((2 * size - 1) * 6);
+		GamePosition curGameState = GetGamePosition();
 
 		HexPos cur = { -1, size - 1 };
 		for (int i = 0; i < 6; i++)
@@ -646,12 +652,30 @@ public:
 				Move move = { cur, cur.GetNeighbor(i + 1) };
 
 				if (IsMoveLegal(move))
-					moves.Append(move);
+				{
+					Push(move);
+					GamePosition stateAfterMove = GetGamePosition();
+					if (!states.Contains(stateAfterMove))
+					{
+						states.Add(stateAfterMove);
+						moves.Append(move);
+					}
+					RestorePosition(curGameState);
+				}
 
 				move.to = cur.GetNeighbor(i + 2);
 
 				if (IsMoveLegal(move))
-					moves.Append(move);
+				{
+					Push(move);
+					GamePosition stateAfterMove = GetGamePosition();
+					if (!states.Contains(stateAfterMove))
+					{
+						states.Add(stateAfterMove);
+						moves.Append(move);
+					}
+					RestorePosition(curGameState);
+				}
 
 				cur = cur.GetNeighbor(i);
 			}
@@ -659,6 +683,7 @@ public:
 
 		return moves;
 	}
+
 
 
 	Game& operator=(const Game& other)

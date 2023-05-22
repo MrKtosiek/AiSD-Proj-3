@@ -44,5 +44,8 @@
     <ClInclude Include="Capture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GamePositionSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

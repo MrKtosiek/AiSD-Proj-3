@@ -1,5 +1,6 @@
 #pragma once
 #include "String.h"
+#include "Move.h"
 
 struct GamePosition
 {
@@ -10,6 +11,7 @@ struct GamePosition
 	int whiteReserve = 0;
 	int blackReserve = 0;
 	int gameState = 0;
+	Move lastMove;
 
 	GamePosition() {}
 
@@ -21,6 +23,7 @@ struct GamePosition
 	bool operator==(const GamePosition& other) const
 	{
 		return
+			gameState == other.gameState &&
 			whitePieces == other.whitePieces &&
 			blackPieces == other.blackPieces &&
 			whiteReserve == other.whiteReserve &&
