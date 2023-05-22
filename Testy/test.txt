@@ -1,0 +1,16 @@
+LOAD_GAME_BOARD
+4 4 24 24
+11 10 B
+   B W B W
+  B B _ B W
+ B W B B B W
+B W W _ B B B
+ _ W _ B W _
+  _ _ W W W
+   _ W _ _
+
+PLAY_RANDOM
+PRINT_GAME_BOARD
+
+PLAY_RANDOM
+PRINT_GAME_BOARD

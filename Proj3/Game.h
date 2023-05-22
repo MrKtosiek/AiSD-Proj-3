@@ -21,7 +21,7 @@ public:
 	int size = 0;
 	char** tiles = nullptr;
 	int activePlayer = 0;
-	char playerColors[2] = { TILE_WHITE, TILE_BLACK };
+	const char playerColors[2] = { TILE_WHITE, TILE_BLACK };
 	int playerReserves[2] = { 0, 0 };
 	int playerPieces[2] = { 0, 0 };
 	int playerMaxPieces[2] = { 0, 0 };
@@ -191,8 +191,8 @@ public:
 	{
 		std::cout << size << " ";
 		std::cout << maxChain << " ";
-		std::cout << playerPieces[WHITE] << " ";
-		std::cout << playerPieces[BLACK] << "\n";
+		std::cout << playerMaxPieces[WHITE] << " ";
+		std::cout << playerMaxPieces[BLACK] << "\n";
 		std::cout << playerReserves[WHITE] << " ";
 		std::cout << playerReserves[BLACK] << " ";
 		std::cout << playerColors[activePlayer] << "\n";
@@ -225,7 +225,6 @@ public:
 
 
 		// check if the move is legal and if there are no unsettled captures
-		Vector<Capture> possibleCaptures = GetPossibleCaptures(lastMove, activePlayer);
 		if (!IsMoveLegal(move))
 		{
 			std::cout << "Illegal move\n";
@@ -233,6 +232,7 @@ public:
 			gameState = GameState::BAD_MOVE;
 			return;
 		}
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
 		if (possibleCaptures.GetLength() > 1)
 		{
 			std::cout << "Can't move, there are captures that need to be resolved\n";
@@ -268,6 +268,13 @@ public:
 	}
 	void DoMove(const Capture& capture)
 	{
+		if (gameState == GameState::WHITE_WIN || gameState == GameState::BLACK_WIN || gameState == GameState::DEAD_LOCK)
+		{
+			// the game has finished
+			return;
+		}
+
+
 		// verify the capture notation
 		if (capture.player != activePlayer)
 		{
@@ -290,7 +297,7 @@ public:
 	// automatically perform all captures that don't need any decisions, and switch the player
 	void ResolveCaptures(const Move& previousMove)
 	{
-		Vector<Capture> possibleCaptures = GetPossibleCaptures(previousMove, activePlayer);
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
 		if (possibleCaptures.GetLength() == 1)
 		{
 			CapturePieces(possibleCaptures[0]);
@@ -299,7 +306,7 @@ public:
 		{
 			SwitchPlayer();
 
-			possibleCaptures = GetPossibleCaptures(previousMove, activePlayer);
+			possibleCaptures = GetPossibleCaptures(activePlayer);
 			if (possibleCaptures.GetLength() == 1)
 			{
 				CapturePieces(possibleCaptures[0]);
@@ -324,7 +331,55 @@ public:
 
 		playerReserves[activePlayer] -= 1;
 	}
+	
 
+	// scans the entire board for chains long enough to capture
+	Vector<Capture> GetPossibleCaptures(int player) const
+	{
+		Vector<Capture> possibleCaptures;
+
+		HexPos edgePos = { -1, size - 1 };
+
+		for (int i = 0; i < 6; i++)
+		{
+			for (int n = 0; n < size; n++)
+			{
+				// prevent the diagonals from being checked 2 times from different sides
+				if (n == 0 && i % 2 == 0)
+				{
+					edgePos = edgePos.GetNeighbor(i);
+					continue;
+				}
+
+				HexPos cur = edgePos.GetNeighbor(i + 1);
+				
+				while (IsOnBoard(cur))
+				{
+					Capture cap(cur, cur.GetNeighbor(i + 1) - cur, player);
+
+					if (CheckCapture(cap))
+					{
+						possibleCaptures.Append(cap);
+
+						// skip the captured pieces
+						while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[player])
+						{
+							cur = cur.GetNeighbor(i + 1);
+						}
+					}
+
+					cur = cur.GetNeighbor(i + 1);
+				}
+
+				edgePos = edgePos.GetNeighbor(i);
+			}
+		}
+
+		return possibleCaptures;
+	}
+
+	// faster than the version without the 'move' argument, 
+	// but only checks for captures that could have been caused by the passed move
 	Vector<Capture> GetPossibleCaptures(Move move, int player) const
 	{
 		Vector<Capture> possibleCaptures;
@@ -332,11 +387,11 @@ public:
 		// check crossing captures
 		HexPos cur = move.to;
 		size_t dir = move.from.GetNeighborIndex(move.to);
-		while (IsOnBoard(cur)/* && tiles[cur.x][cur.y] != TILE_EMPTY*/)
+		while (IsOnBoard(cur))
 		{
 			if (tiles[cur.x][cur.y] == playerColors[player])
 			{
-				Capture cap = { cur, cur.GetNeighbor(dir + 1) - cur, CharToPlayer(tiles[cur.x][cur.y]) };
+				Capture cap(cur, cur.GetNeighbor(dir + 1) - cur, player);
 
 				if (CheckCapture(cap))
 					possibleCaptures.Append(cap);
@@ -352,11 +407,11 @@ public:
 
 		// check parallel captures
 		cur = move.to;
-		while (IsOnBoard(cur)/* && tiles[cur.x][cur.y] != TILE_EMPTY*/)
+		while (IsOnBoard(cur))
 		{
 			if (tiles[cur.x][cur.y] == playerColors[player])
 			{
-				Capture cap = { cur, cur.GetNeighbor(dir) - cur, CharToPlayer(tiles[cur.x][cur.y]) };
+				Capture cap(cur, cur.GetNeighbor(dir) - cur, player);
 
 				if (CheckCapture(cap))
 					possibleCaptures.Append(cap);
@@ -370,25 +425,9 @@ public:
 			cur = cur.GetNeighbor(dir);
 		}
 
-		//OrderCaptures(possibleCaptures);
-
 		return possibleCaptures;
 	}
-	void OrderCaptures(Vector<Capture>& captures) const
-	{
-		// bubble sort the captures based on their color compared to the active player
-		// (active player's captures are executed first)
-		for (size_t i = 0; i < captures.GetLength(); i++)
-		{
-			for (size_t j = 0; j < i; j++)
-			{
-				if (captures[j].player != activePlayer && captures[j + 1].player == activePlayer)
-				{
-					std::swap(captures[j], captures[j + 1]);
-				}
-			}
-		}
-	}
+
 
 	bool CheckCapture(const Capture& cap) const
 	{
@@ -470,7 +509,25 @@ public:
 		capture.dir = dir;
 		return true;
 	}
+	String CaptureToNotation(const Capture& capture)
+	{
+		String result;
 
+		HexPos cur = capture.pos;
+		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[capture.player])
+		{
+			cur -= capture.dir;
+		}
+		cur += capture.dir;
+		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[capture.player])
+		{
+			result.Append(HexToNotation(cur));
+			result.Append(' ');
+			cur += capture.dir;
+		}
+
+		return result;
+	}
 
 	void PrintGameState() const
 	{
