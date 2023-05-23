@@ -12,11 +12,11 @@ class Game
 {
 public:
 
-	const int WHITE = 0;
-	const int BLACK = 1;
-	const char TILE_EMPTY = '_';
-	const char TILE_WHITE = 'W';
-	const char TILE_BLACK = 'B';
+	static const int WHITE = 0;
+	static const int BLACK = 1;
+	static const char TILE_EMPTY = '_';
+	static const char TILE_WHITE = 'W';
+	static const char TILE_BLACK = 'B';
 
 	int size = 0;
 	char** tiles = nullptr;
@@ -179,6 +179,7 @@ public:
 		}
 
 
+
 		int cursor = 0;
 		for (int i = 0; i < GetRowCount(); i++)
 		{
@@ -192,6 +193,19 @@ public:
 				tiles[pos.x][pos.y] = board[cursor];
 				cursor++;
 			}
+		}
+
+
+		Vector<Capture> whiteRows = GetPossibleCaptures(WHITE);
+		Vector<Capture> blackRows = GetPossibleCaptures(BLACK);
+		size_t rowCount = blackRows.GetLength() + whiteRows.GetLength();
+		if (rowCount > 0)
+		{
+			if (rowCount == 1)
+				std::cout << "ERROR_FOUND_" << blackRows.GetLength() + whiteRows.GetLength() << "_ROW_OF_LENGTH_K\n\n";
+			else
+				std::cout << "ERROR_FOUND_" << blackRows.GetLength() + whiteRows.GetLength() << "_ROWS_OF_LENGTH_K\n\n";
+			return;
 		}
 
 
@@ -246,22 +260,22 @@ public:
 			switch (moveCode)
 			{
 			case MoveCode::FIRST_POS_OUT_OF_BOUNDS:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_INDEX\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_INDEX\n\n";
 				break;
 			case MoveCode::SECOND_POS_OUT_OF_BOUNDS:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_INDEX\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_INDEX\n\n";
 				break;
 			case MoveCode::NOT_NEIGHBORS:
-				std::cout << "UNKNOWN_MOVE_DIRECTION\n";
+				std::cout << "UNKNOWN_MOVE_DIRECTION\n\n";
 				break;
 			case MoveCode::FIRST_POS_IS_NOT_EDGE:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_STARTING_FIELD\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_STARTING_FIELD\n\n";
 				break;
 			case MoveCode::SECOND_POS_IS_EDGE:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_DESTINATION_FIELD\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_DESTINATION_FIELD\n\n";
 				break;
 			case MoveCode::ROW_IS_FULL:
-				std::cout << "BAD_MOVE_ROW_IS_FULL\n";
+				std::cout << "BAD_MOVE_ROW_IS_FULL\n\n";
 				break;
 			default:
 				break;
@@ -298,7 +312,9 @@ public:
 		// move the pieces
 		Push(move);
 
-		ResolveCaptures(move);
+		std::cout << "MOVE_COMMITTED\n\n";
+
+		ResolveCaptures();
 
 		lastMove = move;
 		gameState = GameState::IN_PROGRESS;
@@ -328,11 +344,11 @@ public:
 
 		CapturePieces(capture);
 
-		ResolveCaptures(lastMove);
+		ResolveCaptures();
 	}
 
 	// automatically perform all captures that don't need any decisions, and switch the player
-	void ResolveCaptures(const Move& previousMove)
+	void ResolveCaptures()
 	{
 		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
 		if (possibleCaptures.GetLength() == 1)
@@ -546,7 +562,7 @@ public:
 		capture.dir = dir;
 		return true;
 	}
-	String CaptureToNotation(const Capture& capture)
+	String CaptureToNotation(const Capture& capture) const
 	{
 		String result;
 
@@ -648,7 +664,7 @@ public:
 		return str;
 	}
 
-	int CharToPlayer(char c) const
+	static int CharToPlayer(char c)
 	{
 		return (c == TILE_WHITE) ? WHITE : BLACK;
 	}

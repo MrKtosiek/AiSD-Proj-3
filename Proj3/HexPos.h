@@ -70,7 +70,7 @@ struct HexPos
 		return { -s, -q };
 	}
 
-	size_t GetDistanceTo(const HexPos& dest) const
+	int GetDistanceTo(const HexPos& dest) const
 	{
 		int q1 = -x - y;
 		int r1 = x;

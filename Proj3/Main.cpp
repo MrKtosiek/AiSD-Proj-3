@@ -15,6 +15,8 @@ void ReadString(String& str, const String& endChars)
 {
 	String tmp;
 
+	cin >> ws;
+
 	while (cin && !endChars.Contains(cin.peek()))
 	{
 		char input = getchar();
@@ -50,7 +52,6 @@ void InputGame(Game& game)
 
 void ReadMove(Game& game)
 {
-	cin >> ws;
 	String first;
 	ReadString(first, "-");
 
@@ -94,7 +95,7 @@ void Program()
 	String input;
 	while (!cin.eof())
 	{
-		cin >> input;
+		ReadString(input, " \n");
 		input.Capitalize();
 
 		if (input == "QUIT")
@@ -152,6 +153,6 @@ int main()
 	//int end = clock();
 	//cout << "Finished after "<< (double)(end - start)/CLOCKS_PER_SEC << "s\n";
 
-	//_CrtDumpMemoryLeaks();
+	_CrtDumpMemoryLeaks();
 	return 0;
 }

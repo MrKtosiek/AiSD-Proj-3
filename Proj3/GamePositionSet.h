@@ -32,10 +32,23 @@ private:
 	}
 
 public:
-	GamePositionSet(size_t capacity)
+	explicit GamePositionSet(size_t capacity)
 	{
 		this->capacity = capacity;
 		chains = new KeyValuePair*[capacity]();
+	}
+	GamePositionSet(const GamePositionSet& orig)
+		: capacity(orig.capacity)
+	{
+		chains = new KeyValuePair*[capacity]();
+
+		for (size_t i = 0; i < capacity; i++)
+		{
+			for (KeyValuePair* p = orig.chains[i]; p != nullptr; p = p->next)
+			{
+				Add(orig.positions[p->index]);
+			}
+		}
 	}
 	~GamePositionSet()
 	{
@@ -88,5 +101,16 @@ public:
 			}
 			prev = p;
 		}
+	}
+
+	GamePositionSet& operator=(const GamePositionSet& other)
+	{
+		GamePositionSet tmp(other);
+
+		std::swap(capacity, tmp.capacity);
+		std::swap(chains, tmp.chains);
+		std::swap(positions, tmp.positions);
+
+		return *this;
 	}
 };

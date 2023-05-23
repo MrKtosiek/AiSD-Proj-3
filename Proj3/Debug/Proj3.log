@@ -1,4 +1,2 @@
 ﻿  Main.cpp
-D:\Studia\AiSD\AiSD-Proj-3\Proj3\Game.h(700,42): warning C4018: '<=': signed/unsigned mismatch
-D:\Studia\AiSD\AiSD-Proj-3\Proj3\Game.h(708,42): warning C4018: '>': signed/unsigned mismatch
   Proj3.vcxproj -> D:\Studia\AiSD\AiSD-Proj-3\Proj3\Debug\Proj3.exe

@@ -8,7 +8,7 @@ class Solver
 private:
 	Game* game = nullptr;
 public:
-	Solver(Game* game) : game(game) {}
+	explicit Solver(Game* game) : game(game) {}
 	
 	void PlayRandomMove()
 	{
