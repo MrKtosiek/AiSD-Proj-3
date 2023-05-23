@@ -9,6 +9,21 @@
 using namespace std;
 
 
+// reads a string from cin until it reaches one of the endChars
+// doesn't remove the endChar from cin
+void ReadString(String& str, const String& endChars)
+{
+	String tmp;
+
+	while (cin && !endChars.Contains(cin.peek()))
+	{
+		char input = getchar();
+		if (!cin.eof())
+			tmp.Append(input);
+	}
+	str = tmp;
+}
+
 
 void InputGame(Game& game)
 {
@@ -35,8 +50,9 @@ void InputGame(Game& game)
 
 void ReadMove(Game& game)
 {
+	cin >> ws;
 	String first;
-	cin >> first;
+	ReadString(first, "-");
 
 	if (first == "w:" || first == "b:")
 	{
@@ -60,6 +76,7 @@ void ReadMove(Game& game)
 	}
 	else
 	{
+		cin.get(); // skip the '-'
 		String toNotation;
 		cin >> toNotation;
 		Move move = { game.NotationToHex(first), game.NotationToHex(toNotation) };

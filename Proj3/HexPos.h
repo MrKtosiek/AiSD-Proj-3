@@ -70,6 +70,18 @@ struct HexPos
 		return { -s, -q };
 	}
 
+	size_t GetDistanceTo(const HexPos& dest) const
+	{
+		int q1 = -x - y;
+		int r1 = x;
+		int s1 = y;
+		int q2 = -dest.x - dest.y;
+		int r2 = dest.x;
+		int s2 = dest.y;
+
+		return ((abs(q1 - q2) + abs(r1 - r2) + abs(s1 - s2)) / 2);
+	}
+
 	HexPos& operator+=(const HexPos& other)
 	{
 		this->x += other.x;

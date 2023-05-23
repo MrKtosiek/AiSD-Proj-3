@@ -72,6 +72,15 @@ public:
 		}
 	}
 
+	bool Contains(const char& c) const
+	{
+		for (size_t i = 0; i < length; i++)
+		{
+			if (chars[i] == c)
+				return true;
+		}
+		return false;
+	}
 	int ToInt() const
 	{
 		int value = 0;

@@ -34,6 +34,17 @@ public:
 		BLACK_WIN,
 		DEAD_LOCK
 	} gameState = GameState::IN_PROGRESS;
+	
+	enum class MoveCode
+	{
+		OK,
+		FIRST_POS_OUT_OF_BOUNDS,
+		FIRST_POS_IS_NOT_EDGE,
+		SECOND_POS_OUT_OF_BOUNDS,
+		SECOND_POS_IS_EDGE,
+		NOT_NEIGHBORS,
+		ROW_IS_FULL
+	};
 
 	Move lastMove = {};
 	Move lastBadMove = {};
@@ -225,11 +236,37 @@ public:
 
 
 		// check if the move is legal and if there are no unsettled captures
-		if (!IsMoveLegal(move))
+		MoveCode moveCode = IsMoveLegal(move);
+		if (moveCode != MoveCode::OK)
 		{
-			std::cout << "Illegal move\n";
+			//std::cout << "Illegal move\n";
 			lastBadMove = move;
 			gameState = GameState::BAD_MOVE;
+
+			switch (moveCode)
+			{
+			case MoveCode::FIRST_POS_OUT_OF_BOUNDS:
+				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_INDEX\n";
+				break;
+			case MoveCode::SECOND_POS_OUT_OF_BOUNDS:
+				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_INDEX\n";
+				break;
+			case MoveCode::NOT_NEIGHBORS:
+				std::cout << "UNKNOWN_MOVE_DIRECTION\n";
+				break;
+			case MoveCode::FIRST_POS_IS_NOT_EDGE:
+				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_STARTING_FIELD\n";
+				break;
+			case MoveCode::SECOND_POS_IS_EDGE:
+				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_DESTINATION_FIELD\n";
+				break;
+			case MoveCode::ROW_IS_FULL:
+				std::cout << "BAD_MOVE_ROW_IS_FULL\n";
+				break;
+			default:
+				break;
+			}
+
 			return;
 		}
 		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
@@ -658,28 +695,55 @@ public:
 		}
 	}
 
-	bool IsOnBoard(HexPos pos) const
+	bool IsOnBoard(const HexPos& pos) const
 	{
-		return
-			(pos.x >= 0 && pos.y >= 0 &&
-			pos.x < GetRowCount() && pos.y < GetRowCount() &&
-			pos.x + pos.y >= size - 1 && pos.x + pos.y <= (size - 1) * 3);
+		return (pos.GetDistanceTo(GetCenter()) <= size - 1);
 	}
-	bool IsMoveLegal(Move move) const
+	bool IsEdge(const HexPos& pos) const
 	{
-		//std::cout << HexToNotation(move.from) << "-" << HexToNotation(move.to) << " ";
-		
-		// initial checks
-		if (IsOnBoard(move.from) || !IsOnBoard(move.to))
+		return (pos.GetDistanceTo(GetCenter()) == size);
+	}
+	bool IsOutOfBounds(const HexPos& pos) const
+	{
+		return (pos.GetDistanceTo(GetCenter()) > size);
+	}
+
+
+	MoveCode IsMoveLegal(Move move) const
+	{
+		if (IsOutOfBounds(move.from))
 		{
-			//std::cout << "incorrect coords\n";
-			return false;
+			return MoveCode::FIRST_POS_OUT_OF_BOUNDS;
+		}
+		if (IsOutOfBounds(move.to))
+		{
+			return MoveCode::SECOND_POS_OUT_OF_BOUNDS;
+		}
+		if (!IsEdge(move.from))
+		{
+			return MoveCode::FIRST_POS_IS_NOT_EDGE;
+		}
+		if (!IsOnBoard(move.to))
+		{
+			return MoveCode::SECOND_POS_IS_EDGE;
 		}
 		if (!move.to.IsNeighbor(move.from))
 		{
-			//std::cout << "not neighbors\n";
-			return false;
+			return MoveCode::NOT_NEIGHBORS;
 		}
+
+
+		// better coord checks
+		//if (IsOnBoard(move.from) || !IsOnBoard(move.to))
+		//{
+		//	//std::cout << "incorrect coords\n";
+		//	return false;
+		//}
+		//if (!move.to.IsNeighbor(move.from))
+		//{
+		//	//std::cout << "not neighbors\n";
+		//	return false;
+		//}
 
 		// check if the pieces can be pushed
 		HexPos cur = move.to;
@@ -687,12 +751,12 @@ public:
 		while (IsOnBoard(cur))
 		{
 			if (tiles[cur.x][cur.y] == TILE_EMPTY)
-				return true;
+				return MoveCode::OK;
 
 			cur += dir;
 		}
-		//std::cout << "no space\n";
-		return false;
+
+		return MoveCode::ROW_IS_FULL;
 	}
 
 	Vector<Move> GetLegalMoves()
@@ -708,7 +772,7 @@ public:
 			{
 				Move move = { cur, cur.GetNeighbor(i + 1) };
 
-				if (IsMoveLegal(move))
+				if (IsMoveLegal(move) == MoveCode::OK)
 				{
 					Push(move);
 					GamePosition stateAfterMove = GetGamePosition();
@@ -722,7 +786,7 @@ public:
 
 				move.to = cur.GetNeighbor(i + 2);
 
-				if (IsMoveLegal(move))
+				if (IsMoveLegal(move) == MoveCode::OK)
 				{
 					Push(move);
 					GamePosition stateAfterMove = GetGamePosition();
