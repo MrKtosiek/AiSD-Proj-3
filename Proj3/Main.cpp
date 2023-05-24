@@ -1,3 +1,4 @@
+//#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <ctime>
 #include "Game.h"
@@ -141,6 +142,7 @@ void Program()
 
 int main()
 {
+	//freopen("output.txt", "w", stdout);
 	//srand(time(nullptr));
 
 	// wait for input

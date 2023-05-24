@@ -55,14 +55,14 @@ struct HexPos
 
 
 
-	HexPos RotateLeft() const
+	HexPos RotateRight() const
 	{
 		int q = -x - y;
 		int r = x;
 		//int s = y;
 		return { -q, -r };
 	}
-	HexPos RotateRight() const
+	HexPos RotateLeft() const
 	{
 		int q = -x - y;
 		//int r = x;

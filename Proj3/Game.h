@@ -188,7 +188,7 @@ public:
 				HexPos center = { size - 1, size - 1 };
 				HexPos pos = { i, j + GetRowOffset(i) };
 				pos -= center;
-				pos = pos.RotateLeft();
+				pos = pos.RotateRight();
 				pos += center;
 				tiles[pos.x][pos.y] = board[cursor];
 				cursor++;
@@ -232,7 +232,7 @@ public:
 				HexPos center = { size - 1, size - 1 };
 				HexPos pos = { i, j + GetRowOffset(i) };
 				pos -= center;
-				pos = pos.RotateLeft();
+				pos = pos.RotateRight();
 				pos += center;
 				std::cout << tiles[pos.x][pos.y] << ' ';
 			}
@@ -351,6 +351,28 @@ public:
 	void ResolveCaptures()
 	{
 		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
+		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
+		{
+			if (CheckCapture(possibleCaptures[i]))
+			{
+				CapturePieces(possibleCaptures[i]);
+			}
+		}
+
+
+		possibleCaptures = GetPossibleCaptures(InactivePlayer());
+		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
+		{
+			if (CheckCapture(possibleCaptures[i]))
+			{
+				CapturePieces(possibleCaptures[i]);
+			}
+		}
+		
+		SwitchPlayer();
+
+
+		/*Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
 		if (possibleCaptures.GetLength() == 1)
 		{
 			CapturePieces(possibleCaptures[0]);
@@ -364,7 +386,7 @@ public:
 			{
 				CapturePieces(possibleCaptures[0]);
 			}
-		}
+		}*/
 	}
 
 	void Push(const Move& move)
@@ -383,6 +405,7 @@ public:
 		tiles[cur.x][cur.y] = valToMove;
 
 		playerReserves[activePlayer] -= 1;
+		playerPieces[activePlayer] += 1;
 	}
 	
 
@@ -522,13 +545,19 @@ public:
 	}
 	void CapturePiece(HexPos pos, int capturer)
 	{
-		if (tiles[pos.x][pos.y] == playerColors[capturer])
+		if (tiles[pos.x][pos.y] == playerColors[activePlayer])
 		{
-			if (capturer == activePlayer)
-				playerReserves[activePlayer] += 1;
-			else
-				playerReserves[InactivePlayer()] += 1;
+			playerReserves[activePlayer] += 1;
 		}
+
+		// correct point counting
+		//if (tiles[pos.x][pos.y] == playerColors[capturer])
+		//{
+		//	if (capturer == activePlayer)
+		//		playerReserves[activePlayer] += 1;
+		//	else
+		//		playerReserves[InactivePlayer()] += 1;
+		//}
 
 		playerPieces[CharToPlayer(tiles[pos.x][pos.y])] -= 1;
 		tiles[pos.x][pos.y] = TILE_EMPTY;
