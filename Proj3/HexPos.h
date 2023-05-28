@@ -33,7 +33,7 @@ struct HexPos
 		return { INT_MAX, INT_MAX }; // this should never be reached
 	}
 
-	bool IsNeighbor(HexPos other) const
+	bool IsNeighbor(const HexPos& other) const
 	{
 		for (size_t i = 0; i < 6; i++)
 		{
@@ -43,7 +43,7 @@ struct HexPos
 		return false;
 	}
 
-	size_t GetNeighborIndex(HexPos other) const
+	size_t GetNeighborIndex(const HexPos& other) const
 	{
 		for (size_t i = 0; i < 6; i++)
 		{
@@ -81,6 +81,27 @@ struct HexPos
 
 		return ((abs(q1 - q2) + abs(r1 - r2) + abs(s1 - s2)) / 2);
 	}
+	bool IsOnSameAxis(const HexPos& other) const
+	{
+		int q1 = -x - y;
+		int r1 = x;
+		int s1 = y;
+		int q2 = -other.x - other.y;
+		int r2 = other.x;
+		int s2 = other.y;
+
+		return (q1 == q2 || r1 == r2 || s1 == s2);
+	}
+	HexPos GetDirectionTo(const HexPos& dest) const
+	{
+		HexPos dir = dest - *this;
+		int distance = GetDistanceTo(dest);
+
+		dir.x /= distance;
+		dir.y /= distance;
+
+		return dir;
+	}
 
 	HexPos& operator+=(const HexPos& other)
 	{
@@ -112,5 +133,9 @@ struct HexPos
 	bool operator==(const HexPos& other) const
 	{
 		return x == other.x && y == other.y;
+	}
+	bool operator!=(const HexPos& other) const
+	{
+		return !(*this == other);
 	}
 };

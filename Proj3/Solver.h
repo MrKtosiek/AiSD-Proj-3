@@ -12,22 +12,17 @@ public:
 	
 	void PlayRandomMove()
 	{
-		Vector<Capture> possibleCaptures = game->GetPossibleCaptures(game->activePlayer);
-		if (possibleCaptures.GetLength() > 0)
-		{
-			Capture cap = possibleCaptures[rand() % possibleCaptures.GetLength()];
-			std::cout << "capturing " << game->CaptureToNotation(cap) << "\n";
-			game->DoMove(cap);
-			return;
-		}
-
 		Vector<Move> legalMoves = game->GetLegalMoves();
 		if (legalMoves.GetLength() > 0)
 		{
 			Move move = legalMoves[rand() % legalMoves.GetLength()];
-			std::cout << "playing " << game->HexToNotation(move.from) << "-" << game->HexToNotation(move.to) << "\n";
+			std::cout << "playing " << game->MoveToNotation(move) << "\n";
 			game->DoMove(move);
 			return;
+		}
+		else
+		{
+			std::cout << "no legal moves found\n";
 		}
 	}
 };

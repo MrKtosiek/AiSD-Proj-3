@@ -45,6 +45,12 @@ public:
 		NOT_NEIGHBORS,
 		ROW_IS_FULL
 	};
+	enum class CaptureCode
+	{
+		OK,
+		WRONG_INDEX_OF_CHOSEN_ROW,
+		WRONG_COLOR_OF_CHOSEN_ROW
+	};
 
 	Move lastMove = {};
 	Move lastBadMove = {};
@@ -73,7 +79,7 @@ public:
 		}
 	}
 	Game(int size, char activePlayer, int whiteMaxPieces, int blackMaxPieces, int whiteReserve, int blackReserve, size_t maxChain)
-		: size(size), maxChain(maxChain)
+		: size(size), maxChain(maxChain), gameState(GameState::IN_PROGRESS)
 	{
 		if (activePlayer == TILE_WHITE)
 			this->activePlayer = WHITE;
@@ -167,12 +173,12 @@ public:
 			std::cout << "WRONG_BOARD_ROW_LENGTH\n";
 			return;
 		}
-		if (playerMaxPieces[WHITE] - playerPieces[WHITE] != playerReserves[WHITE])
+		if (playerReserves[WHITE] + playerPieces[WHITE] > playerMaxPieces[WHITE])
 		{
 			std::cout << "WRONG_WHITE_PAWNS_NUMBER\n";
 			return;
 		}
-		if (playerMaxPieces[BLACK] - playerPieces[BLACK] != playerReserves[BLACK])
+		if (playerReserves[BLACK] + playerPieces[BLACK] > playerMaxPieces[BLACK])
 		{
 			std::cout << "WRONG_BLACK_PAWNS_NUMBER\n";
 			return;
@@ -196,15 +202,13 @@ public:
 		}
 
 
-		Vector<Capture> whiteRows = GetPossibleCaptures(WHITE);
-		Vector<Capture> blackRows = GetPossibleCaptures(BLACK);
-		size_t rowCount = blackRows.GetLength() + whiteRows.GetLength();
-		if (rowCount > 0)
+		Vector<Capture> rows = GetPossibleCaptures();
+		if (rows.GetLength() > 0)
 		{
-			if (rowCount == 1)
-				std::cout << "ERROR_FOUND_" << blackRows.GetLength() + whiteRows.GetLength() << "_ROW_OF_LENGTH_K\n\n";
+			if (rows.GetLength() == 1)
+				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROW_OF_LENGTH_K\n\n";
 			else
-				std::cout << "ERROR_FOUND_" << blackRows.GetLength() + whiteRows.GetLength() << "_ROWS_OF_LENGTH_K\n\n";
+				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROWS_OF_LENGTH_K\n\n";
 			return;
 		}
 
@@ -253,7 +257,6 @@ public:
 		MoveCode moveCode = IsMoveLegal(move);
 		if (moveCode != MoveCode::OK)
 		{
-			//std::cout << "Illegal move\n";
 			lastBadMove = move;
 			gameState = GameState::BAD_MOVE;
 
@@ -283,14 +286,6 @@ public:
 
 			return;
 		}
-		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
-		if (possibleCaptures.GetLength() > 1)
-		{
-			std::cout << "Can't move, there are captures that need to be resolved\n";
-			lastBadMove = move;
-			gameState = GameState::BAD_MOVE;
-			return;
-		}
 
 
 		// check game ending conditions
@@ -309,84 +304,79 @@ public:
 			return;
 		}
 
+
+		GamePosition posBeforeMove = GetGamePosition();
+
 		// move the pieces
 		Push(move);
 
+
+		// capture pieces
+		for (size_t i = 0; i < move.captures.GetLength(); i++)
+		{
+			// verify the capture
+			CaptureCode captureCode = CheckCapture(move.captures[i]);
+			if (captureCode != CaptureCode::OK)
+			{
+				lastBadMove = move;
+				gameState = GameState::BAD_MOVE;
+
+				switch (captureCode)
+				{
+				case CaptureCode::WRONG_COLOR_OF_CHOSEN_ROW:
+					std::cout << "WRONG_COLOR_OF_CHOSEN_ROW\n\n";
+					break;
+				case CaptureCode::WRONG_INDEX_OF_CHOSEN_ROW:
+					std::cout << "WRONG_INDEX_OF_CHOSEN_ROW\n\n";
+					break;
+				default:
+					break;
+				}
+
+				RestorePosition(posBeforeMove);
+				return;
+			}
+
+			CapturePieces(move.captures[i]);
+		}
+
+
+		if (!ResolveCaptures())
+		{
+			lastBadMove = move;
+			gameState = GameState::BAD_MOVE;
+			RestorePosition(posBeforeMove);
+			return;
+		}
+
 		std::cout << "MOVE_COMMITTED\n\n";
 
-		ResolveCaptures();
+		SwitchPlayer();
 
 		lastMove = move;
 		gameState = GameState::IN_PROGRESS;
 	}
-	void DoMove(const Capture& capture)
+
+	// automatically perform all captures that don't need any decisions
+	// returns true when there were no crossing captures, otherwise returns false and doesn't change the board
+	bool ResolveCaptures()
 	{
-		if (gameState == GameState::WHITE_WIN || gameState == GameState::BLACK_WIN || gameState == GameState::DEAD_LOCK)
-		{
-			// the game has finished
-			return;
-		}
-
-
-		// verify the capture notation
-		if (capture.player != activePlayer)
-		{
-			std::cout << "wrong player color\n";
-			gameState = GameState::BAD_MOVE;
-			return;
-		}
-		if (!CheckCapture(capture))
-		{
-			std::cout << "incorrect capture\n";
-			gameState = GameState::BAD_MOVE;
-			return;
-		}
-
-		CapturePieces(capture);
-
-		ResolveCaptures();
-	}
-
-	// automatically perform all captures that don't need any decisions, and switch the player
-	void ResolveCaptures()
-	{
-		Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
+		GamePosition gameStateBefore = GetGamePosition();
+		Vector<Capture> possibleCaptures = GetPossibleCaptures();
 		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
 		{
-			if (CheckCapture(possibleCaptures[i]))
+			if (CheckCapture(possibleCaptures[i]) == CaptureCode::OK)
 			{
 				CapturePieces(possibleCaptures[i]);
 			}
-		}
-
-
-		possibleCaptures = GetPossibleCaptures(InactivePlayer());
-		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
-		{
-			if (CheckCapture(possibleCaptures[i]))
+			else
 			{
-				CapturePieces(possibleCaptures[i]);
+				RestorePosition(gameStateBefore);
+				return false;
 			}
 		}
-		
-		SwitchPlayer();
 
-
-		/*Vector<Capture> possibleCaptures = GetPossibleCaptures(activePlayer);
-		if (possibleCaptures.GetLength() == 1)
-		{
-			CapturePieces(possibleCaptures[0]);
-		}
-		if (possibleCaptures.GetLength() <= 1)
-		{
-			SwitchPlayer();
-
-			possibleCaptures = GetPossibleCaptures(activePlayer);
-			if (possibleCaptures.GetLength() == 1)
-			{
-				CapturePieces(possibleCaptures[0]);
-			}
-		}*/
+		return true;
 	}
 
 	void Push(const Move& move)
@@ -410,7 +400,7 @@ public:
 	
 
 	// scans the entire board for chains long enough to capture
-	Vector<Capture> GetPossibleCaptures(int player) const
+	Vector<Capture> GetPossibleCaptures() const
 	{
 		Vector<Capture> possibleCaptures;
 
@@ -427,25 +417,34 @@ public:
 					continue;
 				}
 
-				HexPos cur = edgePos.GetNeighbor(i + 1);
-				
-				while (IsOnBoard(cur))
+
+				HexPos start = edgePos.GetNeighbor(i + 1);
+				HexPos end = start;
+				while (IsOnBoard(end))
 				{
-					Capture cap(cur, cur.GetNeighbor(i + 1) - cur, player);
-
-					if (CheckCapture(cap))
+					size_t rowLength = 0;
+					char color = tiles[start.x][start.y];
+					if (color != TILE_EMPTY)
 					{
-						possibleCaptures.Append(cap);
-
-						// skip the captured pieces
-						while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[player])
+						while (IsOnBoard(end) && tiles[end.x][end.y] == color)
 						{
-							cur = cur.GetNeighbor(i + 1);
+							rowLength++;
+							end = end.GetNeighbor(i + 1);
+						}
+						end = end.GetNeighbor(i + 4);
+
+						if (rowLength >= maxChain)
+						{
+							Capture cap = Capture(start, end, CharToPlayer(color));
+							possibleCaptures.Append(cap);
+							//std::cout << "Capture: " << HexToNotation(cap.start) << ", " << HexToNotation(cap.end) << ", " << rowLength << ", " << playerColors[cap.player] << "\n";
 						}
 					}
 
-					cur = cur.GetNeighbor(i + 1);
+					end = end.GetNeighbor(i + 1);
+					start = end;
 				}
+
 
 				edgePos = edgePos.GetNeighbor(i);
 			}
@@ -454,158 +453,74 @@ public:
 		return possibleCaptures;
 	}
 
-	// faster than the version without the 'move' argument, 
-	// but only checks for captures that could have been caused by the passed move
-	Vector<Capture> GetPossibleCaptures(Move move, int player) const
+
+	CaptureCode CheckCapture(const Capture& cap) const
 	{
-		Vector<Capture> possibleCaptures;
+		if (tiles[cap.start.x][cap.start.y] != playerColors[cap.player])
+			return CaptureCode::WRONG_COLOR_OF_CHOSEN_ROW;
 
-		// check crossing captures
-		HexPos cur = move.to;
-		size_t dir = move.from.GetNeighborIndex(move.to);
-		while (IsOnBoard(cur))
-		{
-			if (tiles[cur.x][cur.y] == playerColors[player])
-			{
-				Capture cap(cur, cur.GetNeighbor(dir + 1) - cur, player);
+		if (!cap.start.IsOnSameAxis(cap.end))
+			return CaptureCode::WRONG_INDEX_OF_CHOSEN_ROW;
 
-				if (CheckCapture(cap))
-					possibleCaptures.Append(cap);
-
-				cap.dir = cur.GetNeighbor(dir + 2) - cur;
-
-				if (CheckCapture(cap))
-					possibleCaptures.Append(cap);
-			}
-
-			cur = cur.GetNeighbor(dir);
-		}
-
-		// check parallel captures
-		cur = move.to;
-		while (IsOnBoard(cur))
-		{
-			if (tiles[cur.x][cur.y] == playerColors[player])
-			{
-				Capture cap(cur, cur.GetNeighbor(dir) - cur, player);
-
-				if (CheckCapture(cap))
-					possibleCaptures.Append(cap);
-
-				// skip the captured chain
-				while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[cap.player])
-				{
-					cur = cur.GetNeighbor(dir);
-				}
-			}
-			cur = cur.GetNeighbor(dir);
-		}
-
-		return possibleCaptures;
-	}
-
-
-	bool CheckCapture(const Capture& cap) const
-	{
-		size_t row = 1;
-
-		if (tiles[cap.pos.x][cap.pos.y] != playerColors[cap.player])
-			return false;
-
-		HexPos cur = cap.pos + cap.dir;
+		HexPos cur = cap.start;
+		HexPos dir = cur.GetDirectionTo(cap.end);
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[cap.player])
 		{
-			row++;
-			cur += cap.dir;
+			cur += dir;
 		}
-		cur = cap.pos - cap.dir;
-		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[cap.player])
+		if (cur - dir != cap.end)
 		{
-			row++;
-			cur -= cap.dir;
+			return CaptureCode::WRONG_INDEX_OF_CHOSEN_ROW;
 		}
 
-		return (row >= maxChain);
+		return CaptureCode::OK;
 	}
 
 	void CapturePieces(const Capture& cap)
 	{
-		HexPos cur = cap.pos;
+		HexPos cur = cap.start;
+		HexPos dir = cur.GetDirectionTo(cap.end);
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] != TILE_EMPTY)
 		{
 			CapturePiece(cur, cap.player);
-			cur += cap.dir;
+			cur += dir;
 		}
-		cur = cap.pos - cap.dir;
+		cur = cap.start - dir;
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] != TILE_EMPTY)
 		{
 			CapturePiece(cur, cap.player);
-			cur -= cap.dir;
+			cur -= dir;
 		}
 	}
 	void CapturePiece(HexPos pos, int capturer)
 	{
-		if (tiles[pos.x][pos.y] == playerColors[activePlayer])
+		if (tiles[pos.x][pos.y] == playerColors[capturer])
 		{
-			playerReserves[activePlayer] += 1;
+			if (capturer == activePlayer)
+				playerReserves[activePlayer] += 1;
+			else
+				playerReserves[InactivePlayer()] += 1;
 		}
-
-		// correct point counting
-		//if (tiles[pos.x][pos.y] == playerColors[capturer])
-		//{
-		//	if (capturer == activePlayer)
-		//		playerReserves[activePlayer] += 1;
-		//	else
-		//		playerReserves[InactivePlayer()] += 1;
-		//}
 
 		playerPieces[CharToPlayer(tiles[pos.x][pos.y])] -= 1;
 		tiles[pos.x][pos.y] = TILE_EMPTY;
 	}
 
-	bool NotationToCapture(const Vector<HexPos>& pieces, Capture& capture) const
-	{
-		if (pieces.GetLength() < maxChain) // the chain is too short
-		{
-			return false;
-		}
-
-		if (!pieces[0].IsNeighbor(pieces[1]))
-		{
-			return false;
-		}
-
-		HexPos cur = pieces[0];
-		HexPos dir = pieces[1] - pieces[0];
-		for (size_t i = 0; i < pieces.GetLength(); i++)
-		{
-			if (!(pieces[i] == cur))
-			{
-				return false;
-			}
-
-			cur += dir;
-		}
-
-		capture.pos = pieces[0];
-		capture.dir = dir;
-		return true;
-	}
 	String CaptureToNotation(const Capture& capture) const
 	{
 		String result;
 
-		HexPos cur = capture.pos;
+		HexPos cur = capture.start;
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[capture.player])
 		{
-			cur -= capture.dir;
+			cur -= capture.end;
 		}
-		cur += capture.dir;
+		cur += capture.end;
 		while (IsOnBoard(cur) && tiles[cur.x][cur.y] == playerColors[capture.player])
 		{
 			result.Append(HexToNotation(cur));
 			result.Append(' ');
-			cur += capture.dir;
+			cur += capture.end;
 		}
 
 		return result;
@@ -689,6 +604,27 @@ public:
 
 		colStr = col;
 		str.Append(colStr);
+
+		return str;
+	}
+
+	String MoveToNotation(const Move& move) const
+	{
+		String str;
+
+		str.Append(HexToNotation(move.from));
+		str.Append('-');
+		str.Append(HexToNotation(move.to));
+		for (size_t i = 0; i < move.captures.GetLength(); i++)
+		{
+			str.Append(' ');
+			str.Append(playerColors[move.captures[i].player] + ('a' - 'A'));
+			str.Append(':');
+			str.Append(' ');
+			str.Append(HexToNotation(move.captures[i].start));
+			str.Append(' ');
+			str.Append(HexToNotation(move.captures[i].end));
+		}
 
 		return str;
 	}
@@ -804,6 +740,44 @@ public:
 		return MoveCode::ROW_IS_FULL;
 	}
 
+	void GenerateCaptures(const Move& move, Vector<Move>& moves, GamePositionSet& states)
+	{
+		GamePosition pos = GetGamePosition();
+		if (ResolveCaptures())
+		{
+			GamePosition stateAfterMove = GetGamePosition();
+			if (!states.Contains(stateAfterMove))
+			{
+				states.Add(stateAfterMove);
+				moves.Append(move);
+			}
+			RestorePosition(pos);
+			return;
+		}
+		else
+		{
+			Vector<Capture> captures = GetPossibleCaptures();
+			for (size_t i = 0; i < captures.GetLength(); i++)
+			{
+				CapturePieces(captures[i]);
+				Move nextMove = move;
+				nextMove.captures.Append(captures[i]);
+				GenerateCaptures(nextMove, moves, states);
+				RestorePosition(pos);
+			}
+		}
+	}
+	void GenerateMove(const Move& move, const GamePosition& gamePos, Vector<Move>& moves, GamePositionSet& states)
+	{
+		if (IsMoveLegal(move) == MoveCode::OK)
+		{
+			Push(move);
+
+			GenerateCaptures(move, moves, states);
+			RestorePosition(gamePos);
+		}
+
+	}
 	Vector<Move> GetLegalMoves()
 	{
 		Vector<Move> moves;
@@ -817,31 +791,11 @@ public:
 			{
 				Move move = { cur, cur.GetNeighbor(i + 1) };
 
-				if (IsMoveLegal(move) == MoveCode::OK)
-				{
-					Push(move);
-					GamePosition stateAfterMove = GetGamePosition();
-					if (!states.Contains(stateAfterMove))
-					{
-						states.Add(stateAfterMove);
-						moves.Append(move);
-					}
-					RestorePosition(curGameState);
-				}
+				GenerateMove(move, curGameState, moves, states);
 
 				move.to = cur.GetNeighbor(i + 2);
 
-				if (IsMoveLegal(move) == MoveCode::OK)
-				{
-					Push(move);
-					GamePosition stateAfterMove = GetGamePosition();
-					if (!states.Contains(stateAfterMove))
-					{
-						states.Add(stateAfterMove);
-						moves.Append(move);
-					}
-					RestorePosition(curGameState);
-				}
+				GenerateMove(move, curGameState, moves, states);
 
 				cur = cur.GetNeighbor(i);
 			}
@@ -856,6 +810,7 @@ public:
 	{
 		Game tmp(other);
 
+		std::swap(gameState, tmp.gameState);
 		std::swap(activePlayer, tmp.activePlayer);
 		std::swap(playerReserves, tmp.playerReserves);
 		std::swap(playerPieces, tmp.playerPieces);

@@ -65,4 +65,19 @@ B _ _ _ _ _ _ _ _ _ _ _ _ _ W
 GEN_ALL_POS_MOV
 GEN_ALL_POS_MOV_NUM
 
+LOAD_GAME_BOARD
+4 4 15 15
+5 6 W
+   B _ _ W
+  _ B _ W _
+ _ _ B W _ _
+W W W _ B B B
+ _ _ B W _ _
+  _ B _ W _
+   B _ _ W
+GEN_ALL_POS_MOV
+GEN_ALL_POS_MOV_NUM
+DO_MOVE a1-b2
+PRINT_GAME_BOARD
+
 quit

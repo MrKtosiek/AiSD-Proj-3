@@ -7,4 +7,6 @@ struct Move
 {
 	HexPos from;
 	HexPos to;
+
+	Vector<Capture> captures;
 };

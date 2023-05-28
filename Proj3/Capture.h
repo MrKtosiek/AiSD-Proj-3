@@ -6,10 +6,10 @@
 
 struct Capture
 {
-	HexPos pos;
-	HexPos dir;
+	HexPos start;
+	HexPos end;
 	int player = 0;
 
 	Capture() {}
-	Capture(HexPos pos, HexPos dir, int player) : pos(pos), dir(dir), player(player) {}
+	Capture(HexPos start, HexPos end, int player) : start(start), end(end), player(player) {}
 };

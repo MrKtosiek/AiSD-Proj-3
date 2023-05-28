@@ -53,38 +53,38 @@ void InputGame(Game& game)
 
 void ReadMove(Game& game)
 {
-	String first;
-	ReadString(first, "-");
+	String fromNotation;
+	ReadString(fromNotation, "-");
+	cin.get(); // skip the '-'
+	String toNotation;
+	ReadString(toNotation, " \n");
 
-	if (first == "w:" || first == "b:")
+	Move move = { game.NotationToHex(fromNotation), game.NotationToHex(toNotation) };
+
+	while (cin.peek() != '\n')
 	{
+		String color;
+		ReadString(color, " ");
+		
 		Capture cap;
-		if (first == "w:")
+		if (color == "w:")
 			cap.player = game.WHITE;
 		else
 			cap.player = game.BLACK;
 
+		String start;
+		String end;
 
-		Vector<HexPos> pieces;
-		while (cin.peek() != '\n')
-		{
-			String notation;
-			cin >> notation;
-			pieces.Append(game.NotationToHex(notation));
-		}
-		
-		if(game.NotationToCapture(pieces, cap))
-			game.DoMove(cap);
-	}
-	else
-	{
-		cin.get(); // skip the '-'
-		String toNotation;
-		cin >> toNotation;
-		Move move = { game.NotationToHex(first), game.NotationToHex(toNotation) };
-		game.DoMove(move);
+		ReadString(start, " ");
+		ReadString(end, "\n");
+
+		cap.start = game.NotationToHex(start);
+		cap.end = game.NotationToHex(end);
+
+		move.captures.Append(cap);
 	}
 	
+	game.DoMove(move);
 }
 
 
@@ -143,7 +143,7 @@ void Program()
 int main()
 {
 	//freopen("output.txt", "w", stdout);
-	//srand(time(nullptr));
+	srand(time(nullptr));
 
 	// wait for input
 	//while (cin.peek() == EOF) {}
