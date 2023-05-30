@@ -9,6 +9,8 @@
 
 using namespace std;
 
+int clockStart = 0;
+
 
 // reads a string from cin until it reaches one of the endChars
 // doesn't remove the endChar from cin
@@ -84,7 +86,8 @@ void ReadMove(Game& game)
 		move.captures.Append(cap);
 	}
 	
-	game.DoMove(move);
+	if (game.DoMove(move))
+		cout << "MOVE_COMMITTED\n";
 }
 
 
@@ -113,7 +116,6 @@ void Program()
 		}
 		else if (input == "DO_MOVE")
 		{
-			// DO_MOVE can either be a capture or pushing in a new piece
 			ReadMove(game);
 		}
 		else if (input == "PRINT_GAME_STATE")
@@ -131,7 +133,22 @@ void Program()
 		else if (input == "GEN_ALL_POS_MOV_NUM")
 		{
 			Vector<Move> moves = game.GetLegalMoves();
-			cout << moves.GetLength() << "\n";
+			cout << moves.GetLength() << "_UNIQUE_MOVES\n";
+		}
+		else if (input == "WINNING_SEQUENCE_EXIST")
+		{
+			size_t depth;
+			cin >> depth;
+			int eval = solver.Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
+			cout << eval << "\n";
+		}
+		else if (input == "RESET_CLOCK")
+		{
+			clockStart = clock();
+		}
+		else if (input == "PRINT_TIME")
+		{
+			cout << "Time: " << (double)(clock() - clockStart) / CLOCKS_PER_SEC << "s\n";
 		}
 		else if (input == "PLAY_RANDOM")
 		{
@@ -140,20 +157,17 @@ void Program()
 	}
 }
 
+
 int main()
 {
 	//freopen("output.txt", "w", stdout);
-	//srand(time(nullptr));
+	srand(time(nullptr));
 
 	// wait for input
-	//while (cin.peek() == EOF) {}
-	//int start = clock();
+	while (cin.peek() == EOF) {}
+	clockStart = clock();
 
 	Program();
-
-	// measure time
-	//int end = clock();
-	//cout << "Finished after "<< (double)(end - start)/CLOCKS_PER_SEC << "s\n";
 
 	_CrtDumpMemoryLeaks();
 	return 0;

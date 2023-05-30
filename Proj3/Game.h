@@ -210,9 +210,9 @@ public:
 		if (rows.GetLength() > 0)
 		{
 			if (rows.GetLength() == 1)
-				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROW_OF_LENGTH_K\n\n";
+				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROW_OF_LENGTH_K\n";
 			else
-				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROWS_OF_LENGTH_K\n\n";
+				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROWS_OF_LENGTH_K\n";
 
 			gameState = GameState::INCORRECT_BOARD;
 			return;
@@ -256,12 +256,12 @@ public:
 		}
 	}
 
-	void DoMove(const Move& move)
+	bool DoMove(const Move& move)
 	{
 		if (gameState == GameState::WHITE_WIN || gameState == GameState::BLACK_WIN || gameState == GameState::DEAD_LOCK)
 		{
 			// the game has finished
-			return;
+			return false;
 		}
 
 
@@ -275,28 +275,28 @@ public:
 			switch (moveCode)
 			{
 			case MoveCode::FIRST_POS_OUT_OF_BOUNDS:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_INDEX\n\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_INDEX\n";
 				break;
 			case MoveCode::SECOND_POS_OUT_OF_BOUNDS:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_INDEX\n\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_INDEX\n";
 				break;
 			case MoveCode::NOT_NEIGHBORS:
-				std::cout << "UNKNOWN_MOVE_DIRECTION\n\n";
+				std::cout << "UNKNOWN_MOVE_DIRECTION\n";
 				break;
 			case MoveCode::FIRST_POS_IS_NOT_EDGE:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_STARTING_FIELD\n\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.from) << "_IS_WRONG_STARTING_FIELD\n";
 				break;
 			case MoveCode::SECOND_POS_IS_EDGE:
-				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_DESTINATION_FIELD\n\n";
+				std::cout << "BAD_MOVE_" << HexToNotation(move.to) << "_IS_WRONG_DESTINATION_FIELD\n";
 				break;
 			case MoveCode::ROW_IS_FULL:
-				std::cout << "BAD_MOVE_ROW_IS_FULL\n\n";
+				std::cout << "BAD_MOVE_ROW_IS_FULL\n";
 				break;
 			default:
 				break;
 			}
 
-			return;
+			return false;
 		}
 
 
@@ -308,12 +308,12 @@ public:
 			else
 				gameState = GameState::WHITE_WIN;
 
-			return;
+			return false;
 		}
 		if (GetLegalMoves().GetLength() == 0)
 		{
 			gameState = GameState::DEAD_LOCK;
-			return;
+			return false;
 		}
 
 
@@ -336,17 +336,17 @@ public:
 				switch (captureCode)
 				{
 				case CaptureCode::WRONG_COLOR_OF_CHOSEN_ROW:
-					std::cout << "WRONG_COLOR_OF_CHOSEN_ROW\n\n";
+					std::cout << "WRONG_COLOR_OF_CHOSEN_ROW\n";
 					break;
 				case CaptureCode::WRONG_INDEX_OF_CHOSEN_ROW:
-					std::cout << "WRONG_INDEX_OF_CHOSEN_ROW\n\n";
+					std::cout << "WRONG_INDEX_OF_CHOSEN_ROW\n";
 					break;
 				default:
 					break;
 				}
 
 				RestorePosition(posBeforeMove);
-				return;
+				return false;
 			}
 
 			CapturePieces(move.captures[i]);
@@ -358,15 +358,16 @@ public:
 			lastBadMove = move;
 			gameState = GameState::BAD_MOVE;
 			RestorePosition(posBeforeMove);
-			return;
+			return false;
 		}
 
-		std::cout << "MOVE_COMMITTED\n\n";
 
 		SwitchPlayer();
 
 		lastMove = move;
 		gameState = GameState::IN_PROGRESS;
+
+		return true;
 	}
 
 	// automatically perform all captures that don't need any decisions
@@ -415,7 +416,6 @@ public:
 	Vector<Capture> GetPossibleCaptures() const
 	{
 		Vector<Capture> possibleCaptures;
-
 		HexPos edgePos = { -1, size - 1 };
 
 		for (int i = 0; i < 6; i++)
@@ -434,10 +434,10 @@ public:
 				HexPos end = start;
 				while (IsOnBoard(end))
 				{
-					size_t rowLength = 0;
 					char color = tiles[start.x][start.y];
 					if (color != TILE_EMPTY)
 					{
+						size_t rowLength = 0;
 						while (IsOnBoard(end) && tiles[end.x][end.y] == color)
 						{
 							rowLength++;
@@ -449,14 +449,12 @@ public:
 						{
 							Capture cap = Capture(start, end, CharToPlayer(color));
 							possibleCaptures.Append(cap);
-							//std::cout << "Capture: " << HexToNotation(cap.start) << ", " << HexToNotation(cap.end) << ", " << rowLength << ", " << playerColors[cap.player] << "\n";
 						}
 					}
 
 					end = end.GetNeighbor(i + 1);
 					start = end;
 				}
-
 
 				edgePos = edgePos.GetNeighbor(i);
 			}
@@ -566,8 +564,8 @@ public:
 
 	//              How it's stored                                   Notation:               
 	//                                                                                        
-	//              -1 0 1 2 3 4 5 6 7                                   5 6 7 8 9            
-	//                                          Tile neighbors:         4 \ \ \ \ \           
+	//            y -1 0 1 2 3 4 5 6 7                                   5 6 7 8 9            
+	//           x                              Tile neighbors:         4 \ \ \ \ \           
 	//          -1           + + + + +                                 3 \ + + + + + - 9      
 	//           0         + B W W W +            4 5                 2 \ + W _ _ B + - 8     
 	//           1       + _ _ _ _ _ +          3 T 0                1 \ + W _ _ B _ + - 7    
@@ -752,7 +750,7 @@ public:
 		return MoveCode::ROW_IS_FULL;
 	}
 
-	// 
+	// generate all the possible combinations of captures after the passed move
 	void GenerateCapturesForMove(const Move& move, Vector<Move>& moves, GamePositionSet& states)
 	{
 		GamePosition pos = GetGamePosition();
