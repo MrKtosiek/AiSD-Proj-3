@@ -32,8 +32,9 @@ public:
 		BAD_MOVE,
 		WHITE_WIN,
 		BLACK_WIN,
-		DEAD_LOCK
-	} gameState = GameState::IN_PROGRESS;
+		DEAD_LOCK,
+		INCORRECT_BOARD
+	} gameState = GameState::INCORRECT_BOARD;
 	
 	enum class MoveCode
 	{
@@ -79,7 +80,7 @@ public:
 		}
 	}
 	Game(int size, char activePlayer, int whiteMaxPieces, int blackMaxPieces, int whiteReserve, int blackReserve, size_t maxChain)
-		: size(size), maxChain(maxChain), gameState(GameState::IN_PROGRESS)
+		: size(size), maxChain(maxChain), gameState(GameState::INCORRECT_BOARD)
 	{
 		if (activePlayer == TILE_WHITE)
 			this->activePlayer = WHITE;
@@ -171,16 +172,19 @@ public:
 		if (board.GetLength() != correctBoardLength)
 		{
 			std::cout << "WRONG_BOARD_ROW_LENGTH\n";
+			gameState = GameState::INCORRECT_BOARD;
 			return;
 		}
 		if (playerReserves[WHITE] + playerPieces[WHITE] > playerMaxPieces[WHITE])
 		{
 			std::cout << "WRONG_WHITE_PAWNS_NUMBER\n";
+			gameState = GameState::INCORRECT_BOARD;
 			return;
 		}
 		if (playerReserves[BLACK] + playerPieces[BLACK] > playerMaxPieces[BLACK])
 		{
 			std::cout << "WRONG_BLACK_PAWNS_NUMBER\n";
+			gameState = GameState::INCORRECT_BOARD;
 			return;
 		}
 
@@ -209,15 +213,23 @@ public:
 				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROW_OF_LENGTH_K\n\n";
 			else
 				std::cout << "ERROR_FOUND_" << rows.GetLength() << "_ROWS_OF_LENGTH_K\n\n";
+
+			gameState = GameState::INCORRECT_BOARD;
 			return;
 		}
 
-
+		gameState = GameState::IN_PROGRESS;
 		std::cout << "BOARD_STATE_OK\n";
 		return;
 	}
 	void PrintBoard() const
 	{
+		if (gameState == GameState::INCORRECT_BOARD)
+		{
+			std::cout << "EMPTY_BOARD\n";
+			return;
+		}
+
 		std::cout << size << " ";
 		std::cout << maxChain << " ";
 		std::cout << playerMaxPieces[WHITE] << " ";
@@ -740,7 +752,8 @@ public:
 		return MoveCode::ROW_IS_FULL;
 	}
 
-	void GenerateCaptures(const Move& move, Vector<Move>& moves, GamePositionSet& states)
+	// 
+	void GenerateCapturesForMove(const Move& move, Vector<Move>& moves, GamePositionSet& states)
 	{
 		GamePosition pos = GetGamePosition();
 		if (ResolveCaptures())
@@ -762,7 +775,7 @@ public:
 				CapturePieces(captures[i]);
 				Move nextMove = move;
 				nextMove.captures.Append(captures[i]);
-				GenerateCaptures(nextMove, moves, states);
+				GenerateCapturesForMove(nextMove, moves, states);
 				RestorePosition(pos);
 			}
 		}
@@ -773,7 +786,7 @@ public:
 		{
 			Push(move);
 
-			GenerateCaptures(move, moves, states);
+			GenerateCapturesForMove(move, moves, states);
 			RestorePosition(gamePos);
 		}
 

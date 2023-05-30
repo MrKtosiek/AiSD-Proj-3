@@ -125,7 +125,7 @@ void Program()
 			Vector<Move> moves = game.GetLegalMoves();
 			for (size_t i = 0; i < moves.GetLength(); i++)
 			{
-				cout << game.HexToNotation(moves[i].from) << " " << game.HexToNotation(moves[i].to) << "\n";
+				cout << game.MoveToNotation(moves[i]) << "\n";
 			}
 		}
 		else if (input == "GEN_ALL_POS_MOV_NUM")
@@ -143,7 +143,7 @@ void Program()
 int main()
 {
 	//freopen("output.txt", "w", stdout);
-	srand(time(nullptr));
+	//srand(time(nullptr));
 
 	// wait for input
 	//while (cin.peek() == EOF) {}
