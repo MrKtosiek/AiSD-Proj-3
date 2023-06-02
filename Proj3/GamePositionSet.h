@@ -5,18 +5,18 @@
 
 class GamePositionSet
 {
-	struct KeyValuePair
+	struct KeyIndexPair
 	{
 		size_t index;
-		KeyValuePair* next;
-		KeyValuePair(const size_t index, KeyValuePair* next)
+		KeyIndexPair* next;
+		KeyIndexPair(const size_t index, KeyIndexPair* next)
 			:index(index), next(next)
 		{
 		}
 	};
 private:
 	size_t capacity;
-	KeyValuePair** chains = nullptr;
+	KeyIndexPair** chains = nullptr;
 	Vector<GamePosition> positions;
 
 	size_t BoardHash(const String& str) const
@@ -35,16 +35,16 @@ public:
 	explicit GamePositionSet(size_t capacity)
 	{
 		this->capacity = capacity;
-		chains = new KeyValuePair*[capacity]();
+		chains = new KeyIndexPair*[capacity]();
 	}
 	GamePositionSet(const GamePositionSet& orig)
 		: capacity(orig.capacity)
 	{
-		chains = new KeyValuePair*[capacity]();
+		chains = new KeyIndexPair*[capacity]();
 
 		for (size_t i = 0; i < capacity; i++)
 		{
-			for (KeyValuePair* p = orig.chains[i]; p != nullptr; p = p->next)
+			for (KeyIndexPair* p = orig.chains[i]; p != nullptr; p = p->next)
 			{
 				Add(orig.positions[p->index]);
 			}
@@ -66,13 +66,13 @@ public:
 	{
 		positions.Append(pos);
 		size_t hash = BoardHash(pos.board);
-		chains[hash] = new KeyValuePair(positions.GetLength() - 1, chains[hash]);
+		chains[hash] = new KeyIndexPair(positions.GetLength() - 1, chains[hash]);
 	}
 
 	bool Contains(const GamePosition& pos) const
 	{
 		size_t hash = BoardHash(pos.board);
-		for (KeyValuePair* p = chains[hash]; p != nullptr; p = p->next)
+		for (KeyIndexPair* p = chains[hash]; p != nullptr; p = p->next)
 		{
 			if (positions[p->index] == pos)
 			{
@@ -82,11 +82,24 @@ public:
 		return false;
 	}
 
+	GamePosition* Get(const GamePosition& pos) const
+	{
+		size_t hash = BoardHash(pos.board);
+		for (KeyIndexPair* p = chains[hash]; p != nullptr; p = p->next)
+		{
+			if (positions[p->index] == pos)
+			{
+				return &positions[p->index];
+			}
+		}
+		return nullptr;
+	}
+
 	void Remove(const GamePosition& pos)
 	{
 		size_t hash = BoardHash(pos.board);
-		KeyValuePair* prev = nullptr;
-		for (KeyValuePair* p = chains[hash]; p != nullptr; p = p->next)
+		KeyIndexPair* prev = nullptr;
+		for (KeyIndexPair* p = chains[hash]; p != nullptr; p = p->next)
 		{
 			if (positions[p->index] == pos)
 			{

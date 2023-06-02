@@ -25,7 +25,7 @@ public:
 	int playerReserves[2] = { 0, 0 };
 	int playerPieces[2] = { 0, 0 };
 	int playerMaxPieces[2] = { 0, 0 };
-	size_t maxChain = 0;
+	size_t rowCaptureLength = 0;
 	enum class GameState
 	{
 		IN_PROGRESS,
@@ -61,7 +61,7 @@ public:
 	Game(const Game& orig)
 	{
 		size = orig.size;
-		maxChain = orig.maxChain;
+		rowCaptureLength = orig.rowCaptureLength;
 		activePlayer = orig.activePlayer;
 		playerReserves[WHITE] = orig.playerReserves[WHITE];
 		playerReserves[BLACK] = orig.playerReserves[BLACK];
@@ -79,8 +79,8 @@ public:
 				tiles[i][j + GetRowOffset(i)] = orig.tiles[i][j + GetRowOffset(i)];
 		}
 	}
-	Game(int size, char activePlayer, int whiteMaxPieces, int blackMaxPieces, int whiteReserve, int blackReserve, size_t maxChain)
-		: size(size), maxChain(maxChain), gameState(GameState::INCORRECT_BOARD)
+	Game(int size, char activePlayer, int whiteMaxPieces, int blackMaxPieces, int whiteReserve, int blackReserve, size_t rowCaptureLength)
+		: size(size), rowCaptureLength(rowCaptureLength), gameState(GameState::INCORRECT_BOARD)
 	{
 		if (activePlayer == TILE_WHITE)
 			this->activePlayer = WHITE;
@@ -206,7 +206,7 @@ public:
 		}
 
 
-		Vector<Capture> rows = GetPossibleCaptures();
+		Vector<Capture> rows = GetPossibleCaptures(rowCaptureLength);
 		if (rows.GetLength() > 0)
 		{
 			if (rows.GetLength() == 1)
@@ -218,7 +218,19 @@ public:
 			return;
 		}
 
-		gameState = GameState::IN_PROGRESS;
+		if (playerReserves[WHITE] == 0)
+			gameState = GameState::BLACK_WIN;
+		else if (playerReserves[BLACK] == 0)
+			gameState = GameState::WHITE_WIN;
+		else
+		{
+			Vector<Move> moves = GetLegalMoves();
+			if (moves.GetLength() == 0)
+				gameState = GameState::DEAD_LOCK;
+			else
+				gameState = GameState::IN_PROGRESS;
+		}
+
 		std::cout << "BOARD_STATE_OK\n";
 		return;
 	}
@@ -231,7 +243,7 @@ public:
 		}
 
 		std::cout << size << " ";
-		std::cout << maxChain << " ";
+		std::cout << rowCaptureLength << " ";
 		std::cout << playerMaxPieces[WHITE] << " ";
 		std::cout << playerMaxPieces[BLACK] << "\n";
 		std::cout << playerReserves[WHITE] << " ";
@@ -258,11 +270,11 @@ public:
 
 	bool DoMove(const Move& move)
 	{
-		if (gameState == GameState::WHITE_WIN || gameState == GameState::BLACK_WIN || gameState == GameState::DEAD_LOCK)
-		{
-			// the game has finished
-			return false;
-		}
+		//if (gameState == GameState::WHITE_WIN || gameState == GameState::BLACK_WIN || gameState == GameState::DEAD_LOCK)
+		//{
+		//	// the game has finished
+		//	return false;
+		//}
 
 
 		// check if the move is legal and if there are no unsettled captures
@@ -375,7 +387,7 @@ public:
 	bool ResolveCaptures()
 	{
 		GamePosition gameStateBefore = GetGamePosition();
-		Vector<Capture> possibleCaptures = GetPossibleCaptures();
+		Vector<Capture> possibleCaptures = GetPossibleCaptures(rowCaptureLength);
 		for (size_t i = 0; i < possibleCaptures.GetLength(); i++)
 		{
 			if (CheckCapture(possibleCaptures[i]) == CaptureCode::OK)
@@ -413,7 +425,7 @@ public:
 	
 
 	// scans the entire board for chains long enough to capture
-	Vector<Capture> GetPossibleCaptures() const
+	Vector<Capture> GetPossibleCaptures(size_t minRowLength) const
 	{
 		Vector<Capture> possibleCaptures;
 		HexPos edgePos = { -1, size - 1 };
@@ -445,7 +457,7 @@ public:
 						}
 						end = end.GetNeighbor(i + 4);
 
-						if (rowLength >= maxChain)
+						if (rowLength >= minRowLength)
 						{
 							Capture cap = Capture(start, end, CharToPlayer(color));
 							possibleCaptures.Append(cap);
@@ -655,6 +667,23 @@ public:
 		gamePos.gameState = (int)gameState;
 		gamePos.lastMove = lastMove;
 
+		gamePos.rowCaptureLength = rowCaptureLength;
+		for (size_t index = 0; index < 2 && index + 2 < rowCaptureLength; index++)
+		{
+			Vector<Capture> rows = GetPossibleCaptures(rowCaptureLength - 1 - index);
+			int whiteCount = 0;
+			int blackCount = 0;
+			for (int n = 0; n < rows.GetLength(); n++)
+			{
+				if (rows[n].player == WHITE)
+					whiteCount++;
+				else
+					blackCount++;
+			}
+			gamePos.whiteRowNumbers[index] = whiteCount;
+			gamePos.blackRowNumbers[index] = blackCount;
+		}
+
 		for (int x = 0; x < GetRowCount(); x++)
 		{
 			for (int y = 0; y < GetRowSize(x); y++)
@@ -662,6 +691,8 @@ public:
 				gamePos.board.Append(tiles[x][y + GetRowOffset(x)]);
 			}
 		}
+
+		gamePos.evaluation = gamePos.EvaluatePosition();
 
 		return gamePos;
 	}
@@ -767,7 +798,7 @@ public:
 		}
 		else
 		{
-			Vector<Capture> captures = GetPossibleCaptures();
+			Vector<Capture> captures = GetPossibleCaptures(rowCaptureLength);
 			for (size_t i = 0; i < captures.GetLength(); i++)
 			{
 				CapturePieces(captures[i]);
@@ -826,7 +857,7 @@ public:
 		std::swap(playerReserves, tmp.playerReserves);
 		std::swap(playerPieces, tmp.playerPieces);
 		std::swap(playerMaxPieces, tmp.playerMaxPieces);
-		std::swap(maxChain, tmp.maxChain);
+		std::swap(rowCaptureLength, tmp.rowCaptureLength);
 		std::swap(size, tmp.size);
 		std::swap(tiles, tmp.tiles);
 

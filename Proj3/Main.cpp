@@ -1,4 +1,4 @@
-//#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <ctime>
 #include "Game.h"
@@ -33,7 +33,7 @@ void ReadString(String& str, const String& endChars)
 void InputGame(Game& game)
 {
 	size_t size;
-	size_t maxChain;
+	size_t rowCaptureLength;
 	size_t whiteMaxPieces;
 	size_t blackMaxPieces;
 	size_t whiteReserve;
@@ -41,14 +41,14 @@ void InputGame(Game& game)
 	char activePlayer;
 
 	cin >> size;
-	cin >> maxChain;
+	cin >> rowCaptureLength;
 	cin >> whiteMaxPieces;
 	cin >> blackMaxPieces;
 	cin >> whiteReserve;
 	cin >> blackReserve;
 	cin >> activePlayer;
 
-	game = Game(size, activePlayer, whiteMaxPieces, blackMaxPieces, whiteReserve, blackReserve, maxChain);
+	game = Game(size, activePlayer, whiteMaxPieces, blackMaxPieces, whiteReserve, blackReserve, rowCaptureLength);
 
 	game.ReadBoard();
 }
@@ -122,12 +122,39 @@ void Program()
 		{
 			game.PrintGameState();
 		}
+		else if (input == "IS_GAME_OVER")
+		{
+			switch (game.gameState)
+			{
+			case Game::GameState::IN_PROGRESS:
+				cout << "GAME_IN_PROGRESS\n";
+				break;
+			case Game::GameState::WHITE_WIN:
+				cout << "THE_WINNER_IS_WHITE\n";
+				break;
+			case Game::GameState::BLACK_WIN:
+				cout << "THE_WINNER_IS_BLACK\n";
+				break;
+			case Game::GameState::DEAD_LOCK:
+				if (game.activePlayer == game.WHITE)
+					cout << "THE_WINNER_IS_BLACK\n";
+				else
+					cout << "THE_WINNER_IS_WHITE\n";
+				break;
+			default:
+				break;
+			}
+		}
 		else if (input == "GEN_ALL_POS_MOV")
 		{
 			Vector<Move> moves = game.GetLegalMoves();
+			GamePosition gamePos = game.GetGamePosition();
 			for (size_t i = 0; i < moves.GetLength(); i++)
 			{
 				cout << game.MoveToNotation(moves[i]) << "\n";
+				//game.DoMove(moves[i]);
+				//game.PrintBoard();
+				//game.RestorePosition(gamePos);
 			}
 		}
 		else if (input == "GEN_ALL_POS_MOV_NUM")
@@ -135,12 +162,62 @@ void Program()
 			Vector<Move> moves = game.GetLegalMoves();
 			cout << moves.GetLength() << "_UNIQUE_MOVES\n";
 		}
+		else if (input == "GEN_ALL_POS_MOV_EXT")
+		{
+			Vector<Move> moves = game.GetLegalMoves();
+			GamePosition gamePos = game.GetGamePosition();
+
+			int eval = solver.EvaluateGame(2);
+			if ((game.activePlayer == game.WHITE && eval == GamePosition::MAX_EVAL) ||
+				(game.activePlayer == game.BLACK && eval == -GamePosition::MAX_EVAL))
+			{
+				cout << game.MoveToNotation(moves[0]) << "\n";
+				game.DoMove(moves[0]);
+				game.PrintBoard();
+				game.RestorePosition(gamePos);
+			}
+			else
+			{
+				for (size_t i = 0; i < moves.GetLength(); i++)
+				{
+					cout << game.MoveToNotation(moves[i]) << "\n";
+					game.DoMove(moves[i]);
+					game.PrintBoard();
+					game.RestorePosition(gamePos);
+				}
+			}
+		}
+		else if (input == "GEN_ALL_POS_MOV_EXT_NUM")
+		{
+			Vector<Move> moves = game.GetLegalMoves();
+			int eval = solver.EvaluateGame(2);
+			if (eval == GamePosition::MAX_EVAL || eval == -GamePosition::MAX_EVAL)
+				cout << "1_UNIQUE_MOVES\n";
+			else
+				cout << moves.GetLength() << "_UNIQUE_MOVES\n";
+		}
+		else if (input == "SOLVE_GAME_STATE")
+		{
+			size_t depthLimit = 10;
+			int eval = solver.EvaluateGame(depthLimit);
+
+			if (eval == GamePosition::MAX_EVAL)
+				cout << "WHITE_HAS_WINNING_STRATEGY\n";
+			else if (eval == -GamePosition::MAX_EVAL)
+				cout << "BLACK_HAS_WINNING_STRATEGY\n";
+
+			//cout << eval << '\n';
+		}
 		else if (input == "WINNING_SEQUENCE_EXIST")
 		{
 			size_t depth;
 			cin >> depth;
-			int eval = solver.Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
-			cout << eval << "\n";
+			int eval = solver.EvaluateGame(depth);
+
+			if (eval == GamePosition::MAX_EVAL)
+				cout << "WHITE_HAS_WINNING_STRATEGY\n";
+			else if (eval == -GamePosition::MAX_EVAL)
+				cout << "BLACK_HAS_WINNING_STRATEGY\n";
 		}
 		else if (input == "RESET_CLOCK")
 		{

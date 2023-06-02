@@ -1,3 +1,4 @@
 ﻿  Main.cpp
-D:\Studia\AiSD\AiSD-Proj-3\Proj3\Main.cpp(164,12): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+D:\Studia\AiSD\AiSD-Proj-3\Proj3\Game.h(676,22): warning C4018: '<': signed/unsigned mismatch
+D:\Studia\AiSD\AiSD-Proj-3\Proj3\Main.cpp(241,12): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   Proj3.vcxproj -> D:\Studia\AiSD\AiSD-Proj-3\Proj3\Debug\Proj3.exe
