@@ -145,12 +145,10 @@
     <ClInclude Include="Capture.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="GamePosition.h" />
-    <ClInclude Include="GamePositionSet.h" />
+    <ClInclude Include="GameState.h" />
     <ClInclude Include="HexPos.h" />
     <ClInclude Include="Move.h" />
     <ClInclude Include="Solver.h" />
-    <ClInclude Include="String.h" />
-    <ClInclude Include="Vector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

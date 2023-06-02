@@ -1,12 +1,12 @@
 #pragma once
 #include "HexPos.h"
-#include "Vector.h"
 #include "Capture.h"
+#include <vector>
 
 struct Move
 {
 	HexPos from;
 	HexPos to;
 
-	Vector<Capture> captures;
+	std::vector<Capture> captures;
 };

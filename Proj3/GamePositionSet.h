@@ -1,7 +1,6 @@
 #pragma once
-#include "String.h"
-#include "Vector.h"
 #include "GamePosition.h"
+#include <vector>
 
 class GamePositionSet
 {
@@ -17,13 +16,13 @@ class GamePositionSet
 private:
 	size_t capacity;
 	KeyIndexPair** chains = nullptr;
-	Vector<GamePosition> positions;
+	std::vector<GamePosition> positions;
 
-	size_t BoardHash(const String& str) const
+	size_t BoardHash(const std::string& str) const
 	{
 		size_t hash = 0;
 		size_t p = 1;
-		for (size_t i = 0; i < str.GetLength(); i++)
+		for (size_t i = 0; i < str.length(); i++)
 		{
 			hash += str[i] * p;
 			p *= 3; // only 3 possible characters, 'W' 'B' '_'
@@ -54,7 +53,7 @@ public:
 	{
 		if (chains != nullptr)
 		{
-			for (size_t i = 0; i < positions.GetLength(); i++)
+			for (size_t i = 0; i < positions.size(); i++)
 			{
 				Remove(positions[i]);
 			}
@@ -64,9 +63,9 @@ public:
 
 	void Add(const GamePosition& pos)
 	{
-		positions.Append(pos);
+		positions.push_back(pos);
 		size_t hash = BoardHash(pos.board);
-		chains[hash] = new KeyIndexPair(positions.GetLength() - 1, chains[hash]);
+		chains[hash] = new KeyIndexPair(positions.size() - 1, chains[hash]);
 	}
 
 	bool Contains(const GamePosition& pos) const
@@ -80,19 +79,6 @@ public:
 			}
 		}
 		return false;
-	}
-
-	GamePosition* Get(const GamePosition& pos) const
-	{
-		size_t hash = BoardHash(pos.board);
-		for (KeyIndexPair* p = chains[hash]; p != nullptr; p = p->next)
-		{
-			if (positions[p->index] == pos)
-			{
-				return &positions[p->index];
-			}
-		}
-		return nullptr;
 	}
 
 	void Remove(const GamePosition& pos)

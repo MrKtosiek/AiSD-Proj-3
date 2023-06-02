@@ -1,5 +1,4 @@
 #pragma once
-#include "String.h"
 
 struct HexPos
 {

@@ -1,14 +1,20 @@
 #pragma once
 #include "Game.h"
 #include "GamePosition.h"
-#include "Vector.h"
 
+#include <vector>
 #include <algorithm>
+#include <unordered_map>
 
 class Solver
 {
 private:
 	static const bool USE_ALPHA_BETA = true;
+	size_t visited = 0;
+	size_t pruned = 0;
+	size_t skippedWithTable = 0;
+
+	std::unordered_map<GamePosition, int> transpositionTable;
 
 	Game* game = nullptr;
 public:
@@ -16,10 +22,10 @@ public:
 	
 	void PlayRandomMove()
 	{
-		Vector<Move> legalMoves = game->GetLegalMoves();
-		if (legalMoves.GetLength() > 0)
+		std::vector<Move> legalMoves = game->GetLegalMoves();
+		if (legalMoves.size() > 0)
 		{
-			Move move = legalMoves[rand() % legalMoves.GetLength()];
+			Move move = legalMoves[rand() % legalMoves.size()];
 			std::cout << "playing " << game->MoveToNotation(move) << "\n";
 			game->DoMove(move);
 			return;
@@ -33,109 +39,87 @@ public:
 
 	int EvaluateGame(size_t depth)
 	{
-		size_t evaluatedNodes = 0;
+		visited = 0;
+		pruned = 0;
+		skippedWithTable = 0;
 
-		int eval = Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL, &evaluatedNodes);
+		int eval = Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
 		
-		std::cout << "Evaluated:" << evaluatedNodes << '\n';
+		//std::cout << "Visited:" << visited << '\n';
+		//std::cout << "Pruned:" << pruned << '\n';
+		//std::cout << "Skipped:" << skippedWithTable << '\n';
+
+		transpositionTable.clear();
 		return eval;
 	}
 
-	int Minimax(size_t depth, int alpha, int beta, size_t* evaluatedNodes)
+	int Minimax(size_t depth, int alpha, int beta)
 	{
 		GamePosition gamePos = game->GetGamePosition();
 
-		if (depth == 0 || game->gameState != Game::GameState::IN_PROGRESS)
+		visited++;
+
+		if (depth == 0 || game->gameState != GameState::IN_PROGRESS)
 		{
 			return gamePos.EvaluatePosition();
 		}
 
-		Vector<Move> moves = game->GetLegalMoves();
-
-		*evaluatedNodes += 1;
+		std::vector<Move> moves = game->GetLegalMoves();
 
 		if (game->activePlayer == game->WHITE)
 		{
-			int value = -GamePosition::MAX_EVAL;
+			int valueMax = -GamePosition::MAX_EVAL;
 
-			for (size_t i = 0; i < moves.GetLength(); i++)
+			for (size_t i = 0; i < moves.size(); i++)
 			{
 				game->DoMove(moves[i]);
-				int childEval = Minimax(depth - 1, alpha, beta, evaluatedNodes);
+				GamePosition childNode = game->GetGamePosition();
+				int childEval;
+				auto result = transpositionTable.find(childNode);
+				if (result == transpositionTable.end())
+				{
+					childEval = Minimax(depth - 1, alpha, beta);
+					transpositionTable.insert({ childNode, childEval });
+				}
+				else
+				{
+					skippedWithTable++;
+					childEval = result->second;
+				}
+				
 				game->RestorePosition(gamePos);
 
-				value = std::max(value, childEval);
+				valueMax = std::max(valueMax, childEval);
 
-				if (USE_ALPHA_BETA && value > beta)
+				alpha = std::max(alpha, valueMax);
+				if (alpha >= beta)
+				{
+					pruned++;
 					break;
-				alpha = std::max(alpha, value);
+				}
 			}
-
-			return value;
+			return valueMax;
 		}
 		else
 		{
-			int value = GamePosition::MAX_EVAL;
+			int valueMin = GamePosition::MAX_EVAL;
 
-			for (size_t i = 0; i < moves.GetLength(); i++)
+			for (size_t i = 0; i < moves.size(); i++)
 			{
 				game->DoMove(moves[i]);
-				int childEval = Minimax(depth - 1, alpha, beta, evaluatedNodes);
+				int childEval = Minimax(depth - 1, alpha, beta);
 				game->RestorePosition(gamePos);
 
-				value = std::min(value, childEval);
+				valueMin = std::min(valueMin, childEval);
 
-				if (USE_ALPHA_BETA && value < alpha)
+				beta = std::min(beta, valueMin);
+				if (beta <= alpha)
+				{
+					pruned++;
 					break;
-				beta = std::min(beta, value);
+				}
 			}
-
-			return value;
+			return valueMin;
 		}
-	}
-
-	int Negamax(size_t depth, int alpha, int beta, int color, size_t* evaluatedNodes)
-	{
-		GamePosition gamePos = game->GetGamePosition();
-		
-		if (depth == 0 || game->gameState != Game::GameState::IN_PROGRESS)
-		{
-			return gamePos.EvaluatePosition() * color;
-		}
-
-		*evaluatedNodes += 1;
-
-		Vector<Move> moves = game->GetLegalMoves();
-
-		// create all child nodes
-		Vector<GamePosition> childNodes;
-		for (size_t i = 0; i < moves.GetLength(); i++)
-		{
-			game->DoMove(moves[i]);
-			GamePosition child = game->GetGamePosition();
-			game->RestorePosition(gamePos);
-
-			childNodes.Append(child);
-		}
-
-		// bubblesort child nodes by their evaluation, descending
-		for (size_t i = 0; i < childNodes.GetLength() - 1; i++)
-			for (size_t j = 0; j < childNodes.GetLength() - 1 - i; j++)
-				if (childNodes[j].evaluation * color > childNodes[j + 1].evaluation * color)
-					std::swap(childNodes[j], childNodes[j + 1]);
-
-		int value = -GamePosition::MAX_EVAL;
-
-		for (size_t i = 0; i < childNodes.GetLength(); i++)
-		{
-			game->RestorePosition(childNodes[i]);
-			int childEval = -Negamax(depth - 1, -beta, -alpha, -color, evaluatedNodes);
-			value = std::max(value, childEval);
-			alpha = std::max(alpha, value);
-			if (alpha >= beta)
-				break;
-		}
-
-		return value;
 	}
 };

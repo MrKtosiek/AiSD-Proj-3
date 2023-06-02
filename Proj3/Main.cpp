@@ -1,5 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
+#include <vector>
+#include <string>
 #include <ctime>
 #include "Game.h"
 #include "HexPos.h"
@@ -14,19 +16,27 @@ int clockStart = 0;
 
 // reads a string from cin until it reaches one of the endChars
 // doesn't remove the endChar from cin
-void ReadString(String& str, const String& endChars)
+void ReadString(std::string& str, const std::string& endChars)
 {
-	String tmp;
+	std::string tmp;
 
 	cin >> ws;
 
-	while (cin && !endChars.Contains(cin.peek()))
+	while (cin && endChars.find(cin.peek()) == std::string::npos)
 	{
 		char input = getchar();
 		if (!cin.eof())
-			tmp.Append(input);
+			tmp.push_back(input);
 	}
 	str = tmp;
+}
+
+void CapitalizeString(std::string& str)
+{
+	for (size_t i = 0; i < str.length(); i++)
+	{
+		str[i] = toupper(str[i]);
+	}
 }
 
 
@@ -55,17 +65,17 @@ void InputGame(Game& game)
 
 void ReadMove(Game& game)
 {
-	String fromNotation;
+	std::string fromNotation;
 	ReadString(fromNotation, "-");
 	cin.get(); // skip the '-'
-	String toNotation;
+	std::string toNotation;
 	ReadString(toNotation, " \n");
 
 	Move move = { game.NotationToHex(fromNotation), game.NotationToHex(toNotation) };
 
 	while (cin.peek() != '\n')
 	{
-		String color;
+		std::string color;
 		ReadString(color, " ");
 		
 		Capture cap;
@@ -74,8 +84,8 @@ void ReadMove(Game& game)
 		else
 			cap.player = game.BLACK;
 
-		String start;
-		String end;
+		std::string start;
+		std::string end;
 
 		ReadString(start, " ");
 		ReadString(end, "\n");
@@ -83,7 +93,7 @@ void ReadMove(Game& game)
 		cap.start = game.NotationToHex(start);
 		cap.end = game.NotationToHex(end);
 
-		move.captures.Append(cap);
+		move.captures.push_back(cap);
 	}
 	
 	if (game.DoMove(move))
@@ -96,11 +106,11 @@ void Program()
 	Game game;
 	Solver solver(&game);
 
-	String input;
+	std::string input;
 	while (!cin.eof())
 	{
 		ReadString(input, " \n");
-		input.Capitalize();
+		CapitalizeString(input);
 
 		if (input == "QUIT")
 		{
@@ -126,16 +136,16 @@ void Program()
 		{
 			switch (game.gameState)
 			{
-			case Game::GameState::IN_PROGRESS:
+			case GameState::IN_PROGRESS:
 				cout << "GAME_IN_PROGRESS\n";
 				break;
-			case Game::GameState::WHITE_WIN:
+			case GameState::WHITE_WIN:
 				cout << "THE_WINNER_IS_WHITE\n";
 				break;
-			case Game::GameState::BLACK_WIN:
+			case GameState::BLACK_WIN:
 				cout << "THE_WINNER_IS_BLACK\n";
 				break;
-			case Game::GameState::DEAD_LOCK:
+			case GameState::DEAD_LOCK:
 				if (game.activePlayer == game.WHITE)
 					cout << "THE_WINNER_IS_BLACK\n";
 				else
@@ -147,9 +157,9 @@ void Program()
 		}
 		else if (input == "GEN_ALL_POS_MOV")
 		{
-			Vector<Move> moves = game.GetLegalMoves();
+			std::vector<Move> moves = game.GetLegalMoves();
 			GamePosition gamePos = game.GetGamePosition();
-			for (size_t i = 0; i < moves.GetLength(); i++)
+			for (size_t i = 0; i < moves.size(); i++)
 			{
 				cout << game.MoveToNotation(moves[i]) << "\n";
 				//game.DoMove(moves[i]);
@@ -159,12 +169,12 @@ void Program()
 		}
 		else if (input == "GEN_ALL_POS_MOV_NUM")
 		{
-			Vector<Move> moves = game.GetLegalMoves();
-			cout << moves.GetLength() << "_UNIQUE_MOVES\n";
+			std::vector<Move> moves = game.GetLegalMoves();
+			cout << moves.size() << "_UNIQUE_MOVES\n";
 		}
 		else if (input == "GEN_ALL_POS_MOV_EXT")
 		{
-			Vector<Move> moves = game.GetLegalMoves();
+			std::vector<Move> moves = game.GetLegalMoves();
 			GamePosition gamePos = game.GetGamePosition();
 
 			int eval = solver.EvaluateGame(2);
@@ -178,7 +188,7 @@ void Program()
 			}
 			else
 			{
-				for (size_t i = 0; i < moves.GetLength(); i++)
+				for (size_t i = 0; i < moves.size(); i++)
 				{
 					cout << game.MoveToNotation(moves[i]) << "\n";
 					game.DoMove(moves[i]);
@@ -189,12 +199,12 @@ void Program()
 		}
 		else if (input == "GEN_ALL_POS_MOV_EXT_NUM")
 		{
-			Vector<Move> moves = game.GetLegalMoves();
+			std::vector<Move> moves = game.GetLegalMoves();
 			int eval = solver.EvaluateGame(2);
 			if (eval == GamePosition::MAX_EVAL || eval == -GamePosition::MAX_EVAL)
 				cout << "1_UNIQUE_MOVES\n";
 			else
-				cout << moves.GetLength() << "_UNIQUE_MOVES\n";
+				cout << moves.size() << "_UNIQUE_MOVES\n";
 		}
 		else if (input == "SOLVE_GAME_STATE")
 		{
