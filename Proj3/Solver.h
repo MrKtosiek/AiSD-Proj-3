@@ -45,9 +45,9 @@ public:
 
 		int eval = Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
 		
-		//std::cout << "Visited:" << visited << '\n';
-		//std::cout << "Pruned:" << pruned << '\n';
-		//std::cout << "Skipped:" << skippedWithTable << '\n';
+		std::cout << "Visited:" << visited << '\n';
+		std::cout << "Pruned:" << pruned << '\n';
+		std::cout << "Skipped:" << skippedWithTable << '\n';
 
 		transpositionTable.clear();
 		return eval;
@@ -107,13 +107,26 @@ public:
 			for (size_t i = 0; i < moves.size(); i++)
 			{
 				game->DoMove(moves[i]);
-				int childEval = Minimax(depth - 1, alpha, beta);
+				GamePosition childNode = game->GetGamePosition();
+				int childEval;
+				auto result = transpositionTable.find(childNode);
+				if (result == transpositionTable.end())
+				{
+					childEval = Minimax(depth - 1, alpha, beta);
+					transpositionTable.insert({ childNode, childEval });
+				}
+				else
+				{
+					skippedWithTable++;
+					childEval = result->second;
+				}
+
 				game->RestorePosition(gamePos);
 
 				valueMin = std::min(valueMin, childEval);
 
 				beta = std::min(beta, valueMin);
-				if (beta <= alpha)
+				if (alpha >= beta)
 				{
 					pruned++;
 					break;

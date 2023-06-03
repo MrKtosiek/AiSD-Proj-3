@@ -660,23 +660,6 @@ public:
 		gamePos.gameState = gameState;
 		gamePos.lastMove = lastMove;
 
-		//gamePos.rowCaptureLength = rowCaptureLength;
-		//for (size_t index = 0; index < 2 && index + 2 < rowCaptureLength; index++)
-		//{
-		//	std::vector<Capture> rows = GetPossibleCaptures(rowCaptureLength - 1 - index);
-		//	int whiteCount = 0;
-		//	int blackCount = 0;
-		//	for (int n = 0; n < rows.size(); n++)
-		//	{
-		//		if (rows[n].player == WHITE)
-		//			whiteCount++;
-		//		else
-		//			blackCount++;
-		//	}
-		//	gamePos.whiteRowNumbers[index] = whiteCount;
-		//	gamePos.blackRowNumbers[index] = blackCount;
-		//}
-
 		for (int x = 0; x < GetRowCount(); x++)
 		{
 			for (int y = 0; y < GetRowSize(x); y++)

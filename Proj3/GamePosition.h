@@ -13,11 +13,6 @@ struct GamePosition
 	int blackReserve = 0;
 	GameState gameState = GameState::INCORRECT_BOARD;
 
-	int rowCaptureLength = 0;
-	// numbers of rows of length k-1 and k-2
-	int whiteRowNumbers[2] = {};
-	int blackRowNumbers[2] = {};
-	
 	Move lastMove;
 
 	static const int MAX_EVAL = 1000000000;
@@ -42,12 +37,6 @@ struct GamePosition
 		int eval = 0;
 		eval += whitePieces + whiteReserve;
 		eval -= blackPieces + blackReserve;
-
-		//for (size_t i = 0; i < 2; i++)
-		//{
-		//	eval += whiteRowNumbers[i] * (rowCaptureLength - 1 - i);
-		//	eval -= blackRowNumbers[i] * (rowCaptureLength - 1 - i);
-		//}
 
 		return eval;
 	}
