@@ -9,7 +9,6 @@
 class Solver
 {
 private:
-	static const bool USE_ALPHA_BETA = true;
 	size_t visited = 0;
 	size_t pruned = 0;
 	size_t skippedWithTable = 0;
@@ -43,11 +42,13 @@ public:
 		pruned = 0;
 		skippedWithTable = 0;
 
-		int eval = Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
-		
-		std::cout << "Visited:" << visited << '\n';
-		std::cout << "Pruned:" << pruned << '\n';
-		std::cout << "Skipped:" << skippedWithTable << '\n';
+		//int eval = Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
+
+		int eval = Negamax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL, game->activePlayer == game->WHITE ? 1 : -1);
+
+		//std::cout << "Visited:" << visited << '\n';
+		//std::cout << "Pruned:" << pruned << '\n';
+		//std::cout << "Skipped:" << skippedWithTable << '\n';
 
 		transpositionTable.clear();
 		return eval;
@@ -134,5 +135,55 @@ public:
 			}
 			return valueMin;
 		}
+	}
+
+	int Negamax(const size_t depth, int alpha, int beta, int color)
+	{
+		GamePosition gamePos = game->GetGamePosition();
+
+		visited++;
+
+		if (depth == 0 || game->gameState != GameState::IN_PROGRESS)
+		{
+			return gamePos.EvaluatePosition();
+		}
+
+		std::vector<Move> moves = game->GetLegalMoves();
+
+		int value = -GamePosition::MAX_EVAL * color;
+
+		for (size_t i = 0; i < moves.size(); i++)
+		{
+			game->DoMove(moves[i]);
+			GamePosition childNode = game->GetGamePosition();
+			int childEval;
+			auto result = transpositionTable.find(childNode);
+			if (result == transpositionTable.end())
+			{
+				childEval = Negamax(depth - 1, alpha, beta, -color);
+				transpositionTable.insert({ childNode, childEval });
+			}
+			else
+			{
+				skippedWithTable++;
+				childEval = result->second;
+			}
+
+			game->RestorePosition(gamePos);
+
+			value = color * std::max(value * color, childEval * color);
+
+			if (color == 1)
+				alpha = std::max(alpha, value);
+			else
+				beta = std::min(beta, value);
+
+			if (alpha >= beta)
+			{
+				pruned++;
+				break;
+			}
+		}
+		return value;
 	}
 };
