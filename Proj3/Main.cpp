@@ -207,7 +207,7 @@ void Program()
 		}
 		else if (input == "SOLVE_GAME_STATE")
 		{
-			size_t depthLimit = 20;
+			size_t depthLimit = 10;
 			int eval = solver.EvaluateGame(depthLimit);
 
 			if (eval == GamePosition::MAX_EVAL)

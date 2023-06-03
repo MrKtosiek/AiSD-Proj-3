@@ -13,6 +13,9 @@ private:
 	size_t pruned = 0;
 	size_t skippedWithTable = 0;
 
+	const bool USE_ALPHA_BETA = true;
+	const bool USE_TRANSPOSITION_TABLE = true;
+
 	std::unordered_map<GamePosition, int> transpositionTable;
 
 	Game* game = nullptr;
@@ -79,7 +82,8 @@ public:
 				if (result == transpositionTable.end())
 				{
 					childEval = Minimax(depth - 1, alpha, beta);
-					transpositionTable.insert({ childNode, childEval });
+					if (USE_TRANSPOSITION_TABLE)
+						transpositionTable.insert({ childNode, childEval });
 				}
 				else
 				{
@@ -92,7 +96,7 @@ public:
 				valueMax = std::max(valueMax, childEval);
 
 				alpha = std::max(alpha, valueMax);
-				if (alpha >= beta)
+				if (USE_ALPHA_BETA && alpha >= beta)
 				{
 					pruned++;
 					break;
@@ -113,7 +117,8 @@ public:
 				if (result == transpositionTable.end())
 				{
 					childEval = Minimax(depth - 1, alpha, beta);
-					transpositionTable.insert({ childNode, childEval });
+					if (USE_TRANSPOSITION_TABLE)
+						transpositionTable.insert({ childNode, childEval });
 				}
 				else
 				{
@@ -126,7 +131,7 @@ public:
 				valueMin = std::min(valueMin, childEval);
 
 				beta = std::min(beta, valueMin);
-				if (alpha >= beta)
+				if (USE_ALPHA_BETA && alpha >= beta)
 				{
 					pruned++;
 					break;
@@ -159,7 +164,8 @@ public:
 			if (result == transpositionTable.end())
 			{
 				childEval = Negamax(depth - 1, alpha, beta, -color);
-				transpositionTable.insert({ childNode, childEval });
+				if (USE_TRANSPOSITION_TABLE)
+					transpositionTable.insert({ childNode, childEval });
 			}
 			else
 			{
@@ -176,7 +182,7 @@ public:
 			else
 				beta = std::min(beta, value);
 
-			if (alpha >= beta)
+			if (USE_ALPHA_BETA && alpha >= beta)
 			{
 				pruned++;
 				break;
