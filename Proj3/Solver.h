@@ -43,7 +43,6 @@ public:
 		skippedWithTable = 0;
 
 		//int eval = Minimax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL);
-
 		int eval = Negamax(depth, -GamePosition::MAX_EVAL, GamePosition::MAX_EVAL, game->activePlayer == game->WHITE ? 1 : -1);
 
 		//std::cout << "Visited:" << visited << '\n';
@@ -136,7 +135,6 @@ public:
 			return valueMin;
 		}
 	}
-
 	int Negamax(const size_t depth, int alpha, int beta, int color)
 	{
 		GamePosition gamePos = game->GetGamePosition();

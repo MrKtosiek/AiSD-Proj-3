@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <vector>
 #include <string>
@@ -215,8 +214,6 @@ void Program()
 				cout << "WHITE_HAS_WINNING_STRATEGY\n";
 			else if (eval == -GamePosition::MAX_EVAL)
 				cout << "BLACK_HAS_WINNING_STRATEGY\n";
-
-			//cout << eval << '\n';
 		}
 		else if (input == "WINNING_SEQUENCE_EXIST")
 		{
@@ -247,7 +244,6 @@ void Program()
 
 int main()
 {
-	//freopen("output.txt", "w", stdout);
 	srand(time(nullptr));
 
 	// wait for input
