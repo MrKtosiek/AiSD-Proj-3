@@ -1,2 +1,2 @@
 # Algorithms and Data Structures - GIPF board game
-University project
+Implementation of the board game GIPF played on a hexagonal grid, along with a minimax solver.
